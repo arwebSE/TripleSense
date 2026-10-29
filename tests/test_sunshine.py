@@ -18,7 +18,7 @@ class SunshineTests(unittest.TestCase):
 
     def test_config_resolves_paths_and_exports_paired_hooks(self):
         with tempfile.TemporaryDirectory(prefix="DS5 path with spaces ") as tmp:
-            config = Path(tmp) / "session.json"
+            config = Path(tmp).resolve() / "session.json"
             config.write_text(
                 json.dumps({"source": "192.0.2.5", "credentials": "host", "usbip": "usbip.exe"}),
                 encoding="utf-8",

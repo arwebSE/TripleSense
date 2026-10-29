@@ -4,8 +4,9 @@ A Windows DualSense device bridge for **Sunshine + Moonlight**, targeting native
 controller input, adaptive triggers, and the audio path used for detailed haptics.
 
 **Development prototype.** Local Windows USB/HID/audio enumeration, live input,
-physical adaptive-trigger mode readback, silent four-channel PCM transport and
-Sunshine start/stop commands have passed. Game compatibility, subjective haptic
+physical adaptive-trigger mode readback, microphone capture, acoustic speaker
+output, four-channel PCM transport and Sunshine start/stop commands have passed.
+Audio tests require Steam isolation on the source PC. Game compatibility, subjective haptic
 quality and two-PC streaming remain unverified.
 See [validation](docs/VALIDATION.md) for current evidence.
 
@@ -41,6 +42,11 @@ needed path; perceptual equivalence to a wired controller still needs testing.
 Windows x64 host, Python 3.11+, and a **standard DualSense over Bluetooth** on
 the controller PC. USB-connected sources, Edge controllers and non-Windows
 clients are not yet supported by this integration.
+Exit Steam on the **physical-controller PC** before starting the source or live
+tests. Its raw Bluetooth mappings include PS + L2 opening Magnifier; unintended
+shortcuts appeared during microphone tests with Steam active. The source checks this
+and refuses to start with Steam running. Steam on a separate Sunshine host is
+fine; the host sees only the translated virtual USB controller.
 
 ```powershell
 uv venv --python 3.12
@@ -112,6 +118,8 @@ audio buffering add latency. WAN operation and subjective fidelity are untested.
 # Optional trigger and silent audio tests:
 uv sync --locked --extra controller --extra dev --extra hardware-test
 .venv/Scripts/python.exe tools/verify_windows.py --effects --audio
+# Microphone capture and a quiet speaker tone; save signal statistics only:
+.venv/Scripts/python.exe tools/verify_windows.py --microphone --speaker
 ```
 
 Transport tests cover certificate rejection, native identity/input, exact

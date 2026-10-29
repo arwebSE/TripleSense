@@ -21,12 +21,16 @@ from ds5emu.timing import TimerResolution  # noqa: E402
 from ds5emu.translate import bt31_payload_to_usb01  # noqa: E402
 
 from dualsensedriver.credentials import generate_pair, tls_context  # noqa: E402
-from dualsensedriver.diagnostics import choose_controller  # noqa: E402
+from dualsensedriver.diagnostics import (  # noqa: E402
+    choose_controller,
+    require_controller_isolation,
+)
 from dualsensedriver.transport import HostTunnel, SecureSource  # noqa: E402
 from tests.wire_client import Client, setup  # noqa: E402
 
 
 async def verify():
+    require_controller_isolation()
     with tempfile.TemporaryDirectory() as tmp:
         pair = Path(tmp) / "pair"
         generate_pair(pair)

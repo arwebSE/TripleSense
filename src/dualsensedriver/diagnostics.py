@@ -3,10 +3,32 @@
 from __future__ import annotations
 
 import dataclasses
+import os
 import shutil
+import subprocess
 import time
 from collections import Counter
 from pathlib import Path
+
+
+def require_controller_isolation() -> None:
+    """Steam can interpret multiplexed raw Bluetooth audio as controller input."""
+    if os.name != "nt":
+        return
+    result = subprocess.run(
+        ["tasklist.exe", "/FI", "IMAGENAME eq steam.exe", "/FO", "CSV", "/NH"],
+        capture_output=True,
+        timeout=5,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+    )
+    if result.returncode:
+        raise RuntimeError("Could not check for competing Steam controller access; tests paused.")
+    if b'"steam.exe"' in result.stdout.lower():
+        raise RuntimeError(
+            "Steam is running on the physical-controller PC. Exit Steam there before starting "
+            "the bridge: its raw-controller mappings can trigger desktop shortcuts during audio. "
+            "Steam may run normally on a separate Sunshine host."
+        )
 
 
 def find_usbip(explicit: str | None = None) -> str | None:

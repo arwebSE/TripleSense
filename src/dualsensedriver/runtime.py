@@ -14,7 +14,7 @@ from ds5emu.backend import SyntheticBackend
 from ds5emu.timing import TimerResolution
 
 from .credentials import tls_context
-from .diagnostics import choose_controller, find_usbip
+from .diagnostics import choose_controller, find_usbip, require_controller_isolation
 from .transport import HostTunnel, SecureSource
 
 log = logging.getLogger(__name__)
@@ -89,6 +89,7 @@ async def source(args) -> None:
     if args.synthetic:
         backend = SyntheticBackend()
     else:
+        require_controller_isolation()
         from ds5emu.bridge import BridgeBackend
 
         selected = choose_controller(args.serial)
