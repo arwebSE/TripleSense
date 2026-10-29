@@ -13,6 +13,8 @@ from pathlib import Path
 
 from .runtime import host, run_role, write_json
 
+WINDOWS_HOST = os.name == "nt"
+
 
 def load_config(path: Path) -> argparse.Namespace:
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -129,7 +131,7 @@ def worker(config: Path, run_dir: Path) -> None:
 def export_app(config: Path, *, name: str) -> dict:
     config = config.resolve()
     load_config(config)
-    if os.name != "nt":
+    if not WINDOWS_HOST:
         raise RuntimeError("Sunshine command generation currently targets Windows hosts.")
 
     def command(action):

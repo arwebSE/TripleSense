@@ -40,8 +40,9 @@ needed path; perceptual equivalence to a wired controller still needs testing.
 ## Setup
 
 Windows x64 host, Python 3.11+, and a **standard DualSense over Bluetooth** on
-the controller PC. USB-connected sources, Edge controllers and non-Windows
-clients are not yet supported by this integration.
+the controller PC. A macOS Bluetooth source is being hardware-validated; see
+[Mac Moonlight setup](docs/MACOS.md). USB-connected sources and Edge controllers
+are not yet supported by this integration.
 Exit Steam on the **physical-controller PC** before starting the source or live
 tests. Its raw Bluetooth mappings include PS + L2 opening Magnifier; unintended
 shortcuts appeared during microphone tests with Steam active. The source checks this

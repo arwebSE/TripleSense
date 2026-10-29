@@ -25,7 +25,7 @@ class SunshineTests(unittest.TestCase):
             )
             args = load_config(config)
             self.assertEqual(args.credentials, str(config.parent / "host"))
-            with patch("dualsensedriver.sunshine.os.name", "nt"):
+            with patch("dualsensedriver.sunshine.WINDOWS_HOST", True):
                 entry = export_app(config, name="DualSense")
             hook = entry["prep-cmd"][0]
             self.assertIn("session start", hook["do"])

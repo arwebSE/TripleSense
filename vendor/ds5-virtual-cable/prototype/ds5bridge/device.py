@@ -27,7 +27,13 @@ class DeviceInfo:
         return self.path.decode(errors="replace")
 
 
-def _classify(path: str) -> str:
+def _classify(path: str, bus_type: int | None = None) -> str:
+    # HIDAPI's bus metadata works with opaque macOS IOKit device paths.
+    # Retain Windows path fallback for bindings that omit the metadata.
+    if bus_type == 0x01:  # HID_API_BUS_USB
+        return "USB"
+    if bus_type == 0x02:  # HID_API_BUS_BLUETOOTH
+        return "BT"
     p = path.lower()
     if BT_PROFILE_GUID in p:
         return "BT"
@@ -47,7 +53,7 @@ def enumerate_devices() -> list[DeviceInfo]:
         out.append(
             DeviceInfo(
                 path=path,
-                transport=_classify(path.decode(errors="replace")),
+                transport=_classify(path.decode(errors="replace"), d.get("bus_type")),
                 serial=d.get("serial_number") or "",
                 product=d.get("product_string") or "",
             )

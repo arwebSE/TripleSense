@@ -1,5 +1,8 @@
 # Sunshine integration
 
+For a macOS Moonlight client with the DualSense on Bluetooth, run the source on
+the Mac and these app hooks on Windows. See [the Mac guide](MACOS.md).
+
 This integration uses built-in `prep-cmd` `do` / `undo` application hooks. `do`
 blocks until USB/IP reports attachment; failures return a nonzero exit code.
 `undo` asks the worker to detach its owned USB port and confirms shutdown.

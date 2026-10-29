@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import dataclasses
-import os
 import shutil
 import subprocess
+import sys
 import time
 from collections import Counter
 from pathlib import Path
@@ -13,17 +13,32 @@ from pathlib import Path
 
 def require_controller_isolation() -> None:
     """Steam can interpret multiplexed raw Bluetooth audio as controller input."""
-    if os.name != "nt":
+    if sys.platform not in ("win32", "darwin"):
         return
-    result = subprocess.run(
-        ["tasklist.exe", "/FI", "IMAGENAME eq steam.exe", "/FO", "CSV", "/NH"],
-        capture_output=True,
-        timeout=5,
-        creationflags=subprocess.CREATE_NO_WINDOW,
+    windows = sys.platform == "win32"
+    command = (
+        ["tasklist.exe", "/FI", "IMAGENAME eq steam.exe", "/FO", "CSV", "/NH"]
+        if windows
+        else ["ps", "-A", "-o", "comm="]
     )
+    options = {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)} if windows else {}
+    try:
+        result = subprocess.run(command, capture_output=True, timeout=5, **options)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError(
+            "Could not check competing controller access; source remains stopped."
+        ) from exc
     if result.returncode:
         raise RuntimeError("Could not check for competing Steam controller access; tests paused.")
-    if b'"steam.exe"' in result.stdout.lower():
+    active = (
+        b'"steam.exe"' in result.stdout.lower()
+        if windows
+        else any(
+            line.rsplit(b"/", 1)[-1].strip().lower() in (b"steam", b"steam_osx")
+            for line in result.stdout.splitlines()
+        )
+    )
+    if active:
         raise RuntimeError(
             "Steam is running on the physical-controller PC. Exit Steam there before starting "
             "the bridge: its raw-controller mappings can trigger desktop shortcuts during audio. "
