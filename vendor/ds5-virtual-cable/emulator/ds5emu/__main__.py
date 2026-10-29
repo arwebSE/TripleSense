@@ -1,0 +1,389 @@
+"""CLI: `python -m ds5emu <command>`
+
+    serve     run the USB/IP server (nothing is installed; a client must attach)
+    descr     dump the descriptors we would serve, for eyeballing
+    selftest  run the protocol unit tests
+
+None of these modify the system. `serve` only binds a loopback TCP socket.
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import logging
+import os
+import sys
+import time
+
+from . import descriptors as D
+from . import wire as W
+from .backend import SyntheticBackend
+from .device import DualSenseDevice
+from .server import DEFAULT_BUSID, UsbIpServer
+from .timing import TimerResolution
+
+
+def _hexdump(data: bytes, indent: str = "  ") -> str:
+    out = []
+    for off in range(0, len(data), 16):
+        chunk = data[off : off + 16]
+        hexs = " ".join(f"{b:02x}" for b in chunk)
+        out.append(f"{indent}{off:04x}  {hexs}")
+    return "\n".join(out)
+
+
+def cmd_descr(args) -> int:
+    dev = DualSenseDevice(SyntheticBackend())
+    info = dev.usbip_device_info(busid=args.busid)
+    print(f"busid            {info.busid}")
+    print(f"VID:PID          {info.idVendor:04X}:{info.idProduct:04X}")
+    print(f"speed            {info.speed} (USB_SPEED_HIGH; must not be lower:")
+    print("                 usbip-win2 rewrites iso bInterval below high speed)")
+    print(f"interfaces       {info.bNumInterfaces} {list(D.interface_infos())}")
+    print(f"usbip_usb_device {len(info.pack())} bytes")
+    print()
+    print(f"device descriptor ({len(D.DEVICE_DESCRIPTOR)} bytes)")
+    print(_hexdump(D.DEVICE_DESCRIPTOR))
+    print(f"configuration descriptor ({len(D.CONFIG_DESCRIPTOR)} bytes)")
+    print(_hexdump(D.CONFIG_DESCRIPTOR))
+    print(f"HID report descriptor ({len(D.HID_REPORT_DESCRIPTOR)} bytes)")
+    print(_hexdump(D.HID_REPORT_DESCRIPTOR))
+    for i in (0, 1, 2, 3):
+        s = D.string_descriptor(i)
+        print(f"string[{i}] {'-- absent (matches the real device)' if s is None else ''}")
+        if s is not None:
+            print(_hexdump(s))
+    return 0
+
+
+class RecordingBackend(SyntheticBackend):
+    """SyntheticBackend that also dumps the speaker stream to a raw file.
+
+    Lives here rather than in backend.py so that E1's measurement plumbing does
+    not collide with the Bluetooth work happening in `BridgeBackend`. The dump
+    is headerless 4-channel s16le at 48 kHz -- exactly the bytes the host put on
+    the wire -- so it can be FFT'd to prove the isochronous OUT path carries the
+    audio intact, not merely at the right rate.
+    """
+
+    def __init__(self, path: str, **kw):
+        super().__init__(**kw)
+        self._fh = open(path, "wb")
+
+    def write_audio_out(self, pcm: bytes) -> None:
+        super().write_audio_out(pcm)
+        self._fh.write(pcm)
+
+    def stop(self) -> None:
+        try:
+            self._fh.close()
+        except Exception:  # pragma: no cover
+            pass
+
+
+def _wrap_recording(backend, path: str):
+    """Tee `write_audio_out` to a raw file without subclassing the backend.
+
+    `RecordingBackend` is a `SyntheticBackend` subclass; the bridge needs the
+    same dump for offline FFT but must stay the live object, so the method is
+    wrapped instead.
+    """
+    fh = open(path, "wb")
+    inner_write = backend.write_audio_out
+    inner_stop = backend.stop
+
+    def write_audio_out(pcm: bytes) -> None:
+        fh.write(pcm)
+        inner_write(pcm)
+
+    def stop() -> None:
+        try:
+            inner_stop()
+        finally:
+            try:
+                fh.close()
+            except Exception:  # pragma: no cover
+                pass
+
+    backend.write_audio_out = write_audio_out
+    backend.stop = stop
+    return backend
+
+
+def _write_json(path: str, snap: dict) -> None:
+    """Atomically replace `path` with `snap`, so a reader never sees a partial
+    file while a run is in progress."""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(snap, fh, indent=1)
+    os.replace(tmp, path)
+
+
+def _snapshot(server, backend) -> dict:
+    """Everything experiment E1 needs, as plain JSON-able data.
+
+    Backend-agnostic since Phase 3c: `SyntheticBackend` publishes counters as
+    attributes, `BridgeBackend` publishes a `stats` dict plus `clock_seam()`.
+    Both shapes end up under the same keys so `--stats-json` can be read the
+    same way for an E1 rerun and for a live bridged run.
+    """
+    dev = server.device
+    bstats = getattr(backend, "stats", None)
+    snap = {
+        "wall_clock": time.time(),
+        "uptime_s": time.perf_counter() - dev.meter.t0,
+        "connections": server.connections,
+        "stats": dict(dev.stats),
+        "output_reports": (bstats["setstate_in"] if bstats
+                           else len(backend.output_reports)),
+        "feature_writes": len(getattr(backend, "feature_writes", ())),
+        "audio_out_packets": (bstats["audio_out_calls"] if bstats
+                              else backend.audio_out_packets),
+        "audio_out_bytes": (bstats["audio_out_bytes"] if bstats
+                            else backend.audio_out_bytes),
+        "audio_in_bytes": (bstats["audio_in_bytes"] if bstats
+                           else backend.audio_in_bytes),
+        "endpoints": {},
+    }
+    if bstats is not None:
+        snap["backend"] = dict(bstats)
+        if hasattr(backend, "clock_seam"):
+            snap["clock_seam"] = backend.clock_seam()
+        if hasattr(backend, "echo_status"):
+            snap["echo_cancel"] = backend.echo_status()   # includes mic_mode
+    for ep in dev.meter.endpoints():
+        s = dev.meter.summary(ep)
+        s["gap_histogram_ms"] = [
+            {"lo": lo, "hi": None if hi == float("inf") else hi, "n": n}
+            for lo, hi, n in dev.meter.gap_histogram(ep)
+        ]
+        s["backlog_frames"] = dev.clock.backlog_frames(ep)
+        s["resyncs"] = dev.clock.resyncs.get(ep, 0)
+        s["resync_times_s"] = [round(t, 4) for t in dev.clock.resync_times.get(ep, [])[:64]]
+        snap["endpoints"][f"0x{ep:02x}"] = s
+    return snap
+
+
+_EP_NAMES = {0x01: "iso OUT 0x01 (speaker+haptics, 4ch)",
+             0x82: "iso IN  0x82 (mic, 2ch)",
+             0x84: "int IN  0x84 (HID input)",
+             0x03: "int OUT 0x03 (HID output)"}
+
+
+def _print_report(snap: dict) -> None:
+    st = snap["stats"]
+    print()
+    print(f"uptime {snap['uptime_s']:.2f}s  connections {snap['connections']}")
+    print(f"control {st['control']}  hid_in {st['hid_in']}  hid_out {st['hid_out']}  "
+          f"iso_out {st['iso_out']}  iso_in {st['iso_in']}  stalled {st['stalled']}")
+    print(f"audio OUT {snap['audio_out_bytes']} B in {snap['audio_out_packets']} packets; "
+          f"audio IN {snap['audio_in_bytes']} B; "
+          f"HID output reports {snap['output_reports']}; feature writes {snap['feature_writes']}")
+    seam = snap.get("clock_seam")
+    if seam:
+        print("\n  clock seam (U=USB FrameClock / B=0x39 Pacer / C=controller crystal)")
+        print(f"    U->B  0x39 {seam['reports_39']} (err {seam['report_39_errors']}), "
+              f"underrun frames {seam['audio_underrun_frames']}, "
+              f"queue drops {seam['audio_q_drop_frames']}, "
+              f"depth {seam['audio_q_depth_frames']}/{seam['audio_q_target_frames']} frames, "
+              f"out-ring peak {seam['out_ring_peak_ms']} ms "
+              f"(overflow {seam['out_ring_overflow_bytes']} B)")
+        print(f"    C->U  mic payloads {seam['mic_payloads']} "
+              f"(decode err {seam['mic_decode_errors']}), "
+              f"underrun calls {seam['mic_underrun_calls']}, reprimes {seam['mic_reprimes']}")
+        print(f"          depth mean {seam['mic_depth_ms_mean']} ms "
+              f"[{seam['mic_depth_ms_min']}..{seam['mic_depth_ms_max']}] "
+              f"target {seam['mic_depth_target_ms']} ms; skew pad/drop "
+              f"{seam['mic_skew_pad_frames']}/{seam['mic_skew_drop_frames']} frames; "
+              f"ring overflow {seam['mic_ring_overflow_bytes']} B")
+        print(f"    control jobs deferred off the URB path: {seam['control_jobs']} "
+              f"(dropped {seam['control_jobs_dropped']})")
+    for key, s in snap["endpoints"].items():
+        ep = int(key, 16)
+        print(f"\n  {_EP_NAMES.get(ep, key)}")
+        if s.get("urbs", 0) < 2:
+            print(f"    urbs {s.get('urbs', 0)} packets {s.get('packets', 0)} "
+                  f"bytes {s.get('bytes', 0)}  (too few to measure)")
+            continue
+        print(f"    urbs {s['urbs']} ({s['urbs_per_s']:.1f}/s, "
+              f"{s['packets_per_urb_mean']:.2f} packets/urb) over {s['span_s']:.2f}s")
+        print(f"    packets {s['packets']} = {s['packets_per_s']:.2f}/s   "
+              f"bytes {s['bytes']} = {s['bytes_per_s']/1000:.2f} kB/s")
+        print(f"    urb inter-arrival: min {s['gap_ms_min']:.3f} median "
+              f"{s['gap_ms_median']:.3f} p99 {s['gap_ms_p99']:.3f} max {s['gap_ms_max']:.3f} ms")
+        print(f"    UNDERRUNS (frame-clock resyncs): {s.get('resyncs', 0)} at t="
+              f"{s.get('resync_times_s', [])}s   backlog now "
+              f"{s.get('backlog_frames', 0)} frames")
+        hist = " ".join(
+            f"[{h['lo']:g}-{'inf' if h['hi'] is None else format(h['hi'], 'g')}):{h['n']}"
+            for h in s["gap_histogram_ms"] if h["n"]
+        )
+        print(f"    gap histogram (ms): {hist}")
+
+
+def cmd_serve(args) -> int:
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
+    )
+    if args.backend == "bridge":
+        # Imported here, not at module scope: `bridge` pulls in numpy, PyAV and
+        # hidapi, and `serve --backend synthetic` must keep working without them.
+        from .bridge import BridgeBackend
+
+        backend = BridgeBackend(target=args.audio_target,
+                                mic_always_on=args.mic_always_on,
+                                serial=args.bt_serial,
+                                mic_mode=("studio" if args.no_echo_cancel
+                                          else args.mic_mode))
+        if args.capture:
+            from .capture import BlackBox
+
+            backend.blackbox = BlackBox(args.capture)
+            print(f"black-box capture armed: {args.capture}-NN-<reason>.txt "
+                  f"(auto-dumped on link death and at shutdown)", flush=True)
+        if args.record_out:
+            backend = _wrap_recording(backend, args.record_out)
+    elif args.record_out:
+        backend = RecordingBackend(args.record_out, tone_hz=args.tone)
+    else:
+        backend = SyntheticBackend(tone_hz=args.tone)
+    server = UsbIpServer(backend, host=args.host, port=args.port, busid=args.busid,
+                         pace_iso=not args.no_pace_iso)
+
+    print(f"ds5emu serving {D.ID_VENDOR:04X}:{D.ID_PRODUCT:04X} on "
+          f"{args.host}:{args.port} as busid {args.busid}", flush=True)
+    print(f'  "C:\\Program Files\\USBip\\usbip.exe" --tcp-port {args.port} '
+          f'list   -r {args.host}', flush=True)
+    print(f'  "C:\\Program Files\\USBip\\usbip.exe" --tcp-port {args.port} '
+          f'attach -r {args.host} -b {args.busid}', flush=True)
+    print("Ctrl+C to stop.", flush=True)
+
+    async def snapshotter():
+        while True:
+            await asyncio.sleep(args.stats_every)
+            # OFF THE EVENT LOOP, and the JSON write with it.
+            #
+            # `_snapshot` sorts every recorded URB gap and walks the histogram
+            # edges over the whole deque -- ~15 ms once the meter holds tens of
+            # thousands of records. Run on the asyncio thread that owes the
+            # isochronous endpoints a 1 ms service interval, that is 15
+            # consecutive intervals missed, and the frame clock resynchronises.
+            #
+            # Measured on 2026-08-25, and it is a lovely trap because the
+            # measurement manufactured exactly the fault it was there to report:
+            #
+            #   --stats-every 2   iso OUT resyncs 35, spaced EXACTLY 2 s apart
+            #   no snapshot       iso OUT resyncs 1, at stream start (E1's rule)
+            #
+            # The audio never suffered -- the buffers absorbed it -- but the
+            # underrun counter, which is the project's primary health metric,
+            # was reporting its own instrumentation.
+            snap = await asyncio.to_thread(_snapshot, server, backend)
+            if args.stats_json:
+                await asyncio.to_thread(_write_json, args.stats_json, snap)
+
+    async def main():
+        await server.start()
+        task = asyncio.create_task(snapshotter()) if args.stats_every > 0 else None
+        try:
+            await server.serve_forever()
+        finally:
+            if task is not None:
+                task.cancel()
+            await server.stop()
+
+    # Windows' default 15.6 ms timer granularity would swamp the 1 ms
+    # isochronous service interval this server has to hold. See timing.py.
+    with TimerResolution(1):
+        try:
+            asyncio.run(main())
+        except KeyboardInterrupt:
+            pass
+        finally:
+            # Shutdown: the loop is finished, so the cost no longer matters and
+            # this one runs inline. Written atomically like the periodic ones.
+            snap = _snapshot(server, backend)
+            if args.stats_json:
+                _write_json(args.stats_json, snap)
+            _print_report(snap)
+    return 0
+
+
+def cmd_selftest(args) -> int:
+    import unittest
+
+    loader = unittest.TestLoader()
+    suite = loader.discover(start_dir="tests", top_level_dir=".")
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    return 0 if result.wasSuccessful() else 1
+
+
+def main(argv=None) -> int:
+    p = argparse.ArgumentParser(prog="python -m ds5emu", description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("serve", help="run the USB/IP server on loopback")
+    s.add_argument("--host", default="127.0.0.1")
+    s.add_argument("--port", type=int, default=W.TCP_PORT)
+    s.add_argument("--busid", default=DEFAULT_BUSID)
+    s.add_argument("--backend", choices=("synthetic", "bridge"), default="synthetic",
+                   help="synthetic: no hardware, a generated tone (experiment E1). "
+                        "bridge: a live Bluetooth DualSense behind the virtual "
+                        "wired one (needs numpy/PyAV/hidapi and the controller)")
+    s.add_argument("--audio-target", choices=("speaker", "headphone"),
+                   default="speaker", help="bridge backend: where 0x39 audio goes")
+    s.add_argument("--bt-serial", default=None, metavar="BDADDR",
+                   help="bridge backend: pick the controller by BD address "
+                        "(e.g. 0011223344bb). STRONGLY RECOMMENDED once more "
+                        "than one controller has been paired -- a unit charging "
+                        "over USB still enumerates over Bluetooth as a stale "
+                        "entry, and index order is not stable across sessions")
+    s.add_argument("--mic-always-on", action="store_true",
+                   help="bridge backend: arm the microphone at start() instead of "
+                        "waiting for the host to SET_INTERFACE alt 1")
+    s.add_argument("--mic-mode", choices=("voice", "pad", "studio"),
+                   default="voice",
+                   help="bridge backend: what is removed from the pad's mic. "
+                        "voice (default): the pad's own speaker and the PC's "
+                        "other speakers; pad: only the pad's own speaker; "
+                        "studio: nothing")
+    s.add_argument("--no-echo-cancel", action="store_true",
+                   help="bridge backend: same as --mic-mode studio (neither the "
+                        "pad's own canceller nor the bridge's)")
+    s.add_argument("--tone", type=float, default=1000.0,
+                   help="synthetic microphone tone in Hz")
+    s.add_argument("--capture", default=None, metavar="PREFIX",
+                   help="bridge backend: arm the black-box flight recorder. "
+                        "Every host->device request and every Bluetooth write "
+                        "is kept in a bounded ring and dumped to "
+                        "PREFIX-NN-<reason>.txt when the Bluetooth link dies "
+                        "(and once at shutdown). See ds5emu/capture.py")
+    s.add_argument("--record-out", default=None, metavar="PATH",
+                   help="dump the received speaker stream as raw 4ch s16le 48 kHz")
+    s.add_argument("--stats-json", default=None,
+                   help="write a measurement snapshot to this file (atomically)")
+    s.add_argument("--stats-every", type=float, default=2.0,
+                   help="snapshot interval in seconds; 0 disables (final one still written)")
+    s.add_argument("--no-pace-iso", action="store_true",
+                   help="DEBUG ONLY: answer isochronous URBs immediately. Makes the "
+                        "host's audio clock run at socket speed -- see ds5emu/timing.py")
+    s.add_argument("-v", "--verbose", action="store_true")
+    s.set_defaults(func=cmd_serve)
+
+    d = sub.add_parser("descr", help="dump the descriptors we serve")
+    d.add_argument("--busid", default=DEFAULT_BUSID)
+    d.set_defaults(func=cmd_descr)
+
+    t = sub.add_parser("selftest", help="run the protocol unit tests")
+    t.set_defaults(func=cmd_selftest)
+
+    args = p.parse_args(argv)
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,9 @@
+include README.md
+recursive-include docs *.md
+recursive-include examples *.json
+recursive-include scripts *.ps1
+recursive-include tools *.py
+recursive-include tests *.py
+recursive-include vendor/ds5-virtual-cable/docs *.md
+recursive-include vendor/ds5-virtual-cable/emulator/tests *.py
+global-exclude *.pyc

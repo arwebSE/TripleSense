@@ -1,0 +1,227 @@
+DS5 Virtual Dongle
+Copyright (c) 2026 DS5 Virtual Dongle contributors
+
+This product is licensed under the MIT License; see LICENSE.
+
+It contains portions derived from the following MIT-licensed projects. Their
+copyright and permission notices are reproduced below in full, as MIT requires.
+A file-by-file account of exactly what is derived and what is not is in
+docs/provenance.md, and the wider credits are in ATTRIBUTIONS.md.
+
+================================================================================
+dualsense-tester -- https://github.com/daidr/dualsense-tester
+
+Portions of prototype/ds5bridge/protocol.py and prototype/ds5bridge/crc.py are
+hand-written Python ports of, or transcriptions of protocol constants from:
+  src/utils/dualsense/btAudioStream.ts       (buildReportSix)
+  src/utils/dualsense/microphoneProtocol.ts  (buildBtMicStateReport,
+                                              buildBtMicControlReport)
+  src/utils/dualsense/ds.util.ts             (sendOutputReportFactory)
+  src/utils/dualsense/crc32.util.ts          (CRC-32 seed bytes)
+  src/router/DualSense/_utils/offset.util.ts (createInputReportOffset)
+  src/router/DualSense/views/_OutputPanel/outputStruct.ts and OutputPanel.vue
+                                             (SetState field offsets and
+                                              valid-flag bit names)
+
+--------------------------------------------------------------------------------
+MIT License
+
+Copyright (c) 2023 Xuezhou Dai (daidr)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+DS5Dongle -- https://github.com/awalol/DS5Dongle
+
+prototype/ds5bridge/protocol.py:build_report_39() is a hand-written Python port
+of the Bluetooth output report 0x39 packet layout in src/audio.cpp
+(audio_bt_task), and prototype/ds5bridge/audio.py's Opus parameters follow the
+encoder configuration in the same file.
+
+--------------------------------------------------------------------------------
+MIT License
+
+Copyright (c) 2026 awalol
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+usbip-win2 -- https://github.com/vadimgrn/usbip-win2
+
+No usbip-win2 code or header is part of this project's source; its public
+headers documented the USB/IP wire format that emulator/ds5emu/wire.py
+implements independently. usbip-win2 is licensed under the 2-Clause BSD
+License as of release 0.9.7.0 and later (earlier releases were GPL-3.0); this
+project targets 0.9.7.7.
+
+Each release publishes one Windows installer.
+
+ds5bridge-setup-<version>-bundled.exe embeds, unmodified and byte-for-byte,
+the official installers USBip-0.9.7.7-x64.exe (usbip-win2,
+BSD-2-Clause, (c) 2021-2026 Vadym Hrynchyshyn) and HidHide_1.5.230_x64.exe
+(HidHide, MIT, (c) 2020 Eric Korff de Gidts, (c) 2021-2024 Benjamin
+Hoeglinger-Stelzer / Nefarius Software Solutions e.U.), each installed as a
+separate product under its own licence. The vendors' copyright and licence
+notices are reproduced in app/packaging/bundle/THIRD-PARTY-NOTICES.txt, which
+that installer places next to the uninstaller in %LOCALAPPDATA%\ds5bridge, as
+the BSD-2-Clause licence requires for binary redistribution. Neither project
+endorses ds5bridge.
+
+scripts/install.ps1 redistributes nothing itself: it downloads that installer
+from this project's release page and verifies its SHA-256 before running it.
+A download-mode build of the installer, ds5bridge-setup-<version>.exe (built
+locally with app/packaging/build-installer.ps1 without -Bundle; not
+published), embeds neither package and instead downloads each vendor's
+official installer from its own release page, verifying its SHA-256 first.
+
+================================================================================
+SpeexDSP 1.2.1 -- https://github.com/xiph/speexdsp
+
+The microphone echo canceller's native core (emulator/native, built into
+ds5aec.dll and shipped in every build) compiles SpeexDSP's MDF echo canceller,
+its resampler and the KISS FFT it uses, vendored unmodified in
+emulator/native/speexdsp/ from the release tag SpeexDSP-1.2.1 (archive SHA-256
+d17ca363654556a4ff1d02cc13d9eb1fc5a8642c90b40bd54ce266c3807b91a7). Their
+notices follow, as the BSD licences require; the installer also places them
+in THIRD-PARTY-NOTICES.txt next to the application.
+
+--------------------------------------------------------------------------------
+Copyright 2002-2008 	Xiph.org Foundation
+Copyright 2002-2008 	Jean-Marc Valin
+Copyright 2005-2007	Analog Devices Inc.
+Copyright 2005-2008	Commonwealth Scientific and Industrial Research
+                        Organisation (CSIRO)
+Copyright 1993, 2002, 2006 David Rowe
+Copyright 2003 		EpicGames
+Copyright 1992-1994	Jutta Degener, Carsten Bormann
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+- Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+
+- Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+- Neither the name of the Xiph.org Foundation nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+mdf.c and fftwrap.c: Copyright (C) 2003-2008 Jean-Marc Valin, same terms.
+
+--------------------------------------------------------------------------------
+resample.c:
+
+Copyright (C) 2007-2008 Jean-Marc Valin
+Copyright (C) 2008      Thorvald Natvig
+
+File: resample.c
+Arbitrary resampling code
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+1. Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+3. The name of the author may not be used to endorse or promote products
+derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+KISS FFT (kiss_fft.c, kiss_fftr.c):
+
+Copyright (c) 2003-2004, Mark Borgerding
+Copyright (c) 2005-2007, Jean-Marc Valin
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+    * Neither the author nor the names of any contributors may be used to
+      endorse or promote products derived from this software without specific
+      prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+================================================================================
+Runtime dependencies are third-party packages installed by the user via pip and
+are not redistributed here. Their licences are listed in docs/provenance.md §6.

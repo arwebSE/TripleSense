@@ -1,0 +1,7 @@
+{
+  "source": "192.168.1.50",
+  "port": 3250,
+  "local_port": 3247,
+  "credentials": "../.credentials/pair/host",
+  "usbip": "C:/Program Files/USBip/usbip.exe"
+}
