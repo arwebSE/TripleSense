@@ -174,6 +174,18 @@ def main():
         )
         with info_path.open("wb") as stream:
             plistlib.dump(info, stream)
+        native_helper = bundle / "Contents/MacOS/dsshine-bluetooth"
+        subprocess.run(
+            [
+                "clang", "-O2", "-Wall", "-Wextra", "-fobjc-arc",
+                "-framework", "AppKit", "-framework", "CoreBluetooth",
+                "-framework", "IOBluetooth",
+                str(ROOT / "src/dualsensedriver/native/macos_bluetooth.m"),
+                "-o", str(native_helper),
+            ],
+            check=True,
+        )
+        subprocess.run([str(native_helper), "--version"], check=True)
         subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(bundle)], check=True)
         subprocess.run(
             [

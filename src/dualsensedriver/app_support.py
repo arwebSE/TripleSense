@@ -31,9 +31,16 @@ def app_directory():
 def load_preferences(root):
     try:
         data = json.loads((root / "settings.json").read_text("utf-8"))
-        return data if isinstance(data, dict) else {}
     except (OSError, ValueError):
-        return {}
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    from .server_identity import load
+
+    identity = load(root)
+    if identity:
+        data.update(identity)
+    return data
 
 
 def save_preferences(root, preferences):

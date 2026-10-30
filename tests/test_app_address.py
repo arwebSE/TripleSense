@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import tempfile
+import concurrent.futures
 import time
 import unittest
 from pathlib import Path
@@ -48,6 +49,33 @@ class DesktopTests(unittest.TestCase):
         self.application.processEvents()
         self.temporary.cleanup()
         self.offer_patch.stop()
+
+    def test_failed_connection_stops_auto_retry_and_unlocks_server_actions(self):
+        window = self.window
+        window.current_role = "controller"
+        window.preferences["controller_profile"] = {"address": "192.0.2.1"}
+        window.auto.setChecked(True)
+        window.busy = True
+        window.on_event("connecting", "Opening Bluetooth")
+        self.assertEqual(window.connect_button.text(), "Cancel")
+        self.assertTrue(window.connect_button.isEnabled())
+        window.on_event("error", "Could not open DualSense Bluetooth")
+        window.on_event("idle", None)
+        self.assertFalse(window.auto.isChecked())
+        self.assertTrue(window.connect_button.isEnabled())
+        self.assertTrue(window.add_server.isEnabled())
+
+    def test_connecting_can_be_cancelled(self):
+        window = self.window
+        window.current_role = "controller"
+        window.preferences["controller_profile"] = {"address": "192.0.2.1"}
+        window.action = concurrent.futures.Future()
+        window.busy = True
+        window.on_event("connecting", "Opening Bluetooth")
+        window._toggle()
+        self.assertTrue(window.action.cancelled())
+        window.on_event("idle", None)
+        self.assertTrue(window.add_server.isEnabled())
 
     def test_closing_main_window_quits_instead_of_hiding(self):
         window = self.window
