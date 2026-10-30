@@ -40,12 +40,13 @@ the controller driver. macOS and Linux gaming-PC support is planned.
    Client automatically. Allow Bluetooth/local-network access when asked.
 3. **On Windows:** Server shows a four-digit pairing code automatically.
 4. **On the Client:** enter the Server address and code, then click **Connect**.
-   **Find on LAN** can find nearby servers. For a VPN, enter the Server's VPN
-   address instead; LAN discovery usually does not cross VPN connections.
+   The Client automatically finds servers on LAN and Tailscale/NetBird every five
+   seconds while adding a server. You can also enter the address manually.
 5. Turn on your DualSense and start your game or stream.
 
 Pairing is saved, so you only need the code once. New codes copy automatically;
-**Copy code** copies the displayed code again.
+**Copy code** copies the displayed code again. Click any Server IP address to
+copy that address.
 The Client keeps a saved-server list with online/offline indicators. Use
 **Add server** to pair another computer, or **Remove** to forget an old one.
 

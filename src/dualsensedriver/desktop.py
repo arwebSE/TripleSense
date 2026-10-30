@@ -5,12 +5,14 @@ from __future__ import annotations
 import ipaddress
 import sys
 from datetime import datetime
+from html import escape
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QObject, QPointF, QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import (
     QAction,
     QColor,
+    QCursor,
     QDesktopServices,
     QFont,
     QIcon,
@@ -63,6 +65,15 @@ def button(text, callback, *, primary=False):
         value.setObjectName("primary")
     value.clicked.connect(callback)
     return value
+
+
+def address_links(title, addresses):
+    links = [
+        f'<a href="{escape(address, quote=True)}" style="color:#70baff;text-decoration:none">'
+        f"{escape(address)}</a>"
+        for address in addresses
+    ]
+    return escape(title) + (", ".join(links) or "Offline")
 
 
 class PageStack(QStackedWidget):
@@ -211,6 +222,7 @@ class Window(QMainWindow):
         if self.mode_page:
             self.pages.addWidget(self.mode_page)
         self.pages.currentChanged.connect(self._fit_page)
+        self.pages.currentChanged.connect(self._sync_discovery)
         outer.addWidget(self.pages, 1)
         footer = QHBoxLayout()
         footer.addWidget(label("v" + __version__, "muted"), 1)
@@ -327,6 +339,7 @@ class Window(QMainWindow):
         content.addWidget(self.peer_label)
         content.addWidget(self.peer_name)
         self.addresses = label("", "muted", wrap=True)
+        self._enable_address_copy(self.addresses)
         content.addWidget(self.addresses)
         layout.addWidget(card)
         self.saved_box = QWidget()
@@ -387,7 +400,7 @@ class Window(QMainWindow):
         server.setContentsMargins(0, 4, 0, 4)
         server.setSpacing(14)
         self.pair_addresses = label("", "muted", wrap=True)
-        self.pair_addresses.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self._enable_address_copy(self.pair_addresses)
         server.addWidget(self.pair_addresses)
         self.pin = label("", "code")
         self.pin.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -414,8 +427,6 @@ class Window(QMainWindow):
         client.setSpacing(8)
         heading = QHBoxLayout()
         heading.addWidget(label("Server address"), 1)
-        self.rescan = button("Find on LAN", lambda: self.engine.submit(self.engine.rescan()))
-        heading.addWidget(self.rescan)
         client.addLayout(heading)
         self.manual_address = QLineEdit()
         self.manual_address.setPlaceholderText("LAN / VPN IP address or hostname")
@@ -433,7 +444,9 @@ class Window(QMainWindow):
         self.hosts.itemClicked.connect(self._choose_discovered)
         client.addWidget(self.hosts)
         self.discovery_hint = label(
-            "Enter the address shown on the Server, or use its VPN address.", "muted", wrap=True
+            "Looking for servers on LAN, Tailscale and NetBird… You can also enter an address.",
+            "muted",
+            wrap=True,
         )
         client.addWidget(self.discovery_hint)
         code_row = QHBoxLayout()
@@ -564,11 +577,13 @@ class Window(QMainWindow):
     def _update_peer(self):
         if self.current_role == "game":
             self.peer_name.setText(self.preferences.get("controller_name") or "No client paired")
-            self.addresses.setText("Server address: " + (", ".join(local_addresses()) or "Offline"))
+            self.addresses.setText(self._server_address_links())
         else:
             profile = self.preferences.get("controller_profile", {})
             self.peer_name.setText(profile.get("name", "No server paired"))
-            self.addresses.setText(profile.get("address", ""))
+            self.addresses.setText(
+                address_links("", [profile["address"]]) if profile.get("address") else ""
+            )
 
     def _update_actions(self):
         server = self.current_role == "game"
@@ -661,20 +676,43 @@ class Window(QMainWindow):
             )
         )
         if server:
-            vpn = []
-            for address in QNetworkInterface.allAddresses():
-                value = address.toString()
-                try:
-                    if ipaddress.ip_address(value) in ipaddress.ip_network("100.64.0.0/10"):
-                        vpn.append(value)
-                except ValueError:
-                    pass
-            lines = ["LAN: " + ", ".join(local_addresses())]
-            if vpn:
-                lines.append("VPN: " + ", ".join(sorted(set(vpn))))
-            self.pair_addresses.setText("\n".join(lines))
+            self.pair_addresses.setText(self._server_address_links())
         self.pages.setCurrentWidget(self.pair_page)
+        self._sync_discovery()
         self._fit_page()
+
+    def _sync_discovery(self, *_):
+        enabled = self.current_role == "controller" and self.pages.currentWidget() is self.pair_page
+        self.engine.submit(self.engine.set_discovery_scanning(enabled))
+
+    def _enable_address_copy(self, widget):
+        widget.setTextFormat(Qt.TextFormat.RichText)
+        widget.setOpenExternalLinks(False)
+        widget.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse)
+        widget.setToolTip("Click an address to copy it")
+        widget.linkActivated.connect(self._copy_address)
+
+    def _copy_address(self, address):
+        try:
+            ipaddress.ip_address(address)
+        except ValueError:
+            return
+        QApplication.clipboard().setText(address)
+        QToolTip.showText(QCursor.pos(), "Address copied", self)
+
+    def _server_address_links(self):
+        vpn = set()
+        for address in QNetworkInterface.allAddresses():
+            value = address.toString()
+            try:
+                if ipaddress.ip_address(value) in ipaddress.ip_network("100.64.0.0/10"):
+                    vpn.add(value)
+            except ValueError:
+                pass
+        lines = [address_links("LAN: ", local_addresses())]
+        if vpn:
+            lines.append(address_links("VPN: ", sorted(vpn)))
+        return "<br>".join(lines)
 
     def _open_pairing(self):
         if self.engine.connection or self.connected:

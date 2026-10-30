@@ -75,7 +75,7 @@ class LanTests(unittest.TestCase):
             self.assertEqual(run.call_count, 4)  # Only DSShine's two firewall rules.
             additions = [call.args[0] for call in run.call_args_list if "add" in call.args[0]]
             self.assertIn("remoteip=localsubnet,100.64.0.0/10", additions[0])
-            self.assertIn("remoteip=localsubnet", additions[1])
+            self.assertIn("remoteip=localsubnet,100.64.0.0/10", additions[1])
 
 
 class RoamingTests(unittest.IsolatedAsyncioTestCase):

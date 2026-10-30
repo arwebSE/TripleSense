@@ -15,7 +15,7 @@ tested with a real controller; Windows-to-Windows still needs live validation.
 
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.4.9-Windows-x64.exe`. The installer includes
+1. **Windows:** run `DSShine-Setup-0.4.10-Windows-x64.exe`. The installer includes
    the signed USB/IP driver and adds app-specific LAN and private-VPN firewall rules.
    It does not change your streaming software or restart Windows automatically.
 2. **Mac:** open `DSShine-macOS.dmg` and drag DSShine into Applications,
@@ -25,8 +25,8 @@ tested with a real controller; Windows-to-Windows still needs live validation.
 3. On Windows, choose **Server**. A four-digit pairing code appears automatically
    and copies to the clipboard.
 4. On the Client, enter the Server address and its code, then click **Connect**.
-   Use **Find on LAN** for nearby servers, or enter the Server's Tailscale/NetBird
-   address when connecting through your own VPN. Pairing is saved automatically.
+   The Client finds LAN and Tailscale/NetBird servers automatically, or you can
+   enter the Server address manually. Pairing is saved automatically.
 5. Pair the DualSense to the Mac over Bluetooth and turn it on. Exit Steam on
    the physical-controller computer. Stream an ordinary Desktop/game entry
    through your preferred streaming app, if you use one.
@@ -87,15 +87,21 @@ The normal connection uses TCP 3250. The pairing listener uses TCP 3251 only
 while a code is active; discovery uses mDNS and UDP 3252 broadcast.
 Installer firewall exceptions restrict TCP access to the DSShine executable,
 local subnets and `100.64.0.0/10`, used by Tailscale and default NetBird networks.
-Discovery remains restricted to local subnets. No router port forwarding is needed.
+Discovery uses local broadcasts plus direct UDP queries to peers listed by the
+installed Tailscale and NetBird apps. No router port forwarding is needed.
 Custom VPN address ranges need a matching firewall rule.
 
 Both computers must be reachable on the LAN or through your private VPN. VPN
-access policies must allow the connection. LAN discovery normally does not cross
-VPNs: enter the Server's VPN address directly. Manual addresses are retained even
+access policies must allow the connection. While adding a server, discovery checks the LAN and known VPN peers every five
+seconds. Discovery stops after pairing or leaving that screen and resumes only
+when you return to add a server. Saved-server online/offline checks are separate.
+The VPN app must be installed and signed in, with a policy allowing UDP 3252
+and TCP 3250�3251 between the computers. If discovery is blocked, enter the
+Server's VPN address directly. Click a Server IP address to copy it. Manual addresses are retained even
 when LAN discovery finds another address for the same server. Tailscale controller
 input and adaptive-trigger feedback have passed a live test; NetBird's firewall
-scope is covered, but live NetBird controller forwarding remains unverified.
+peer discovery and firewall scope are covered, but live NetBird controller
+forwarding remains unverified.
 
 The Client saves paired servers with online/offline indicators. Select one and
 click **Connect**; **Add server** pairs another, and **Remove** forgets the selected
@@ -108,7 +114,7 @@ Logs contain connection diagnostics, not microphone recordings.
 
 ## If setup needs attention
 
-- **No server found:** click **Find on LAN**, or enter the Server address directly. Make sure
+- **No server found:** wait for automatic discovery, or enter the Server address directly. Make sure
   DSShine is open on Windows. On the Mac, use **Settings → Network permissions**
   and allow DSShine.
 - **Windows refuses a connection:** click **Settings → Repair Windows setup**
