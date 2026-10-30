@@ -55,6 +55,29 @@ class LanTests(unittest.TestCase):
         finally:
             client.close()
 
+    def test_relay_address_is_not_presented_as_a_server_route(self):
+        found = []
+        client = LanDiscovery(lambda *args: found.append(args), "mac", targets=[])
+        try:
+            packet = (
+                MAGIC
+                + json.dumps(
+                    {
+                        "kind": "game",
+                        "token": client.token,
+                        "id": "game",
+                        "name": "mibox",
+                        "addresses": ["192.168.1.190", "100.97.43.25"],
+                    }
+                ).encode()
+            )
+            client._receive_reply(packet, ("192.168.1.30", 3252))
+            self.assertEqual(found, [])
+            client._receive_reply(packet, ("192.168.1.190", 3252))
+            self.assertEqual(found[0][1]["address"], "192.168.1.190")
+        finally:
+            client.close()
+
     def test_setup_repair_leaves_streaming_software_configuration_untouched(self):
         with tempfile.TemporaryDirectory() as temporary:
             config = Path(temporary) / "Sunshine/config/sunshine.conf"
