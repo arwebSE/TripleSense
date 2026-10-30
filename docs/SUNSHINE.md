@@ -27,8 +27,21 @@ blocks until USB/IP reports attachment; failures return a nonzero exit code.
    for this setup, using its web UI. The native controller reaches games through
    Windows USB. Keyboard and mouse forwarding remain available.
 5. Start the source on the controller PC before launching the app in Moonlight.
-   The generated hook requests elevated execution through Sunshine's service
-   mechanism for access to the installed USB/IP driver.
+   Commands use your normal account by default. If the installed driver denies
+   access, export with `--elevated` to request Sunshine's elevated execution.
+
+For a source behind SSH, add `"ssh": "YOUR_MAC_USER@MAC_IP"` to the session
+config and use `"source": "127.0.0.1"`. Optional `ssh_identity` and
+`ssh_known_hosts` paths resolve relative to that config, as credentials do.
+The worker opens and closes its own SSH forward; the source remains a separate
+foreground process on the Mac. See [Mac setup](MACOS.md).
+
+Use a Python installation that Sunshine's account can access, including the
+base interpreter referenced by the venv's `pyvenv.cfg`. During hardware setup,
+the development venv ran interactively but Sunshine's child reported exit 103,
+`No Python at ...`, for its base under the developer tool's runtime directory.
+A separate host runtime under the project avoids that inaccessible base path.
+Generate the hooks with the interpreter that will actually run them.
 
 Commands contain absolute Python/config paths and handle spaces. This tool does
 not edit installed Sunshine configuration or restart its service. This is an

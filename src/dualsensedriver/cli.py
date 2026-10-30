@@ -44,6 +44,14 @@ def parser() -> argparse.ArgumentParser:
     src.add_argument("--bind", default="127.0.0.1")
     src.add_argument("--port", type=port, default=3250)
     src.add_argument("--serial")
+    src.add_argument(
+        "--mic-mode",
+        choices=("pad", "studio"),
+        default="pad",
+        help="Pad echo cancellation (default), or raw microphone for acoustic measurements",
+    )
+    src.add_argument("--stats-out", type=Path, help="Write scalar bridge counters on shutdown")
+    src.add_argument("--stop-file", type=Path, help="Stop gracefully when this file appears")
     src.add_argument("--synthetic", action="store_true", help="No controller; protocol tests only")
     src.add_argument("--duration", type=duration)
     dst = sub.add_parser("host", help="Run on the Sunshine PC to receive the controller")
@@ -56,10 +64,18 @@ def parser() -> argparse.ArgumentParser:
     )
     dst.add_argument("--usbip", help="Path to usbip.exe (0.9.8.1 command interface)")
     dst.add_argument("--duration", type=duration)
+    dst.add_argument(
+        "--ssh", help="Forward to source loopback through an existing user@host SSH login"
+    )
+    dst.add_argument("--ssh-identity", type=Path)
+    dst.add_argument("--ssh-known-hosts", type=Path)
     sun = sub.add_parser("sunshine", help="Export an application entry with start/stop hooks")
     sun.add_argument("--config", type=Path, required=True)
     sun.add_argument("--name", default="Desktop (DualSense)")
     sun.add_argument("--out", type=Path, required=True)
+    sun.add_argument(
+        "--elevated", action="store_true", help="Request elevated Sunshine prep commands"
+    )
     session = sub.add_parser("session", help="Sunshine prep-command session lifecycle")
     session.add_argument("action", choices=("start", "stop", "worker"))
     session.add_argument("--config", type=Path, required=True)
@@ -108,7 +124,7 @@ def main(argv=None) -> int:
         elif args.command == "sunshine":
             from .sunshine import export_app
 
-            entry = export_app(args.config, name=args.name)
+            entry = export_app(args.config, name=args.name, elevated=args.elevated)
             with args.out.open("x", encoding="utf-8") as stream:
                 json.dump(entry, stream, indent=2)
                 stream.write("\n")

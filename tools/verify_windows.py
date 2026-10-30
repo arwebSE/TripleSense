@@ -46,25 +46,46 @@ async def pnp_snapshot():
     return json.loads(stdout.decode("utf-8-sig"))
 
 
-async def verify(*, effects=False, audio=False, microphone=False, speaker=False):
-    require_controller_isolation()
+async def verify(
+    *,
+    effects=False,
+    audio=False,
+    microphone=False,
+    speaker=False,
+    source_host=None,
+    source_port=3250,
+    credentials=None,
+    output=Path("captures/windows-enumeration.json"),
+):
+    if not source_host:
+        require_controller_isolation()
     usbip = find_usbip()
     if not usbip:
         raise RuntimeError("Install usbip-win2 before this Windows enumeration test.")
     before_hid = {d["path"] for d in hid.enumerate(0x054C, 0x0CE6)}
     before_pnp = {d["InstanceId"] for d in await pnp_snapshot()}
     with tempfile.TemporaryDirectory() as tmp:
-        pair = Path(tmp) / "pair"
-        generate_pair(pair)
-        selected = choose_controller(None)
-        # Disable speaker echo cancellation only during the acoustic measurement.
-        backend = BridgeBackend(serial=selected.serial, mic_mode="studio" if speaker else "pad")
-        source = SecureSource(backend, tls_context(pair / "source", server=True), port=0)
+        backend, source = None, None
+        if source_host:
+            host_credentials = credentials
+        else:
+            pair = Path(tmp) / "pair"
+            generate_pair(pair)
+            selected = choose_controller(None)
+            # Disable speaker echo cancellation only during the acoustic measurement.
+            backend = BridgeBackend(serial=selected.serial, mic_mode="studio" if speaker else "pad")
+            source = SecureSource(backend, tls_context(pair / "source", server=True), port=0)
+            host_credentials = pair / "host"
         tunnel, owned_port, controller = None, None, None
         serial = "DS5T" + uuid.uuid4().hex[:11]
         try:
-            await source.start()
-            tunnel = HostTunnel("127.0.0.1", source.port, tls_context(pair / "host", server=False))
+            if source:
+                await source.start()
+            tunnel = HostTunnel(
+                source_host or "127.0.0.1",
+                source_port if source_host else source.port,
+                tls_context(host_credentials, server=False),
+            )
             await tunnel.start()
             owned_port = attached_port(
                 await run_usbip(
@@ -108,6 +129,7 @@ async def verify(*, effects=False, audio=False, microphone=False, speaker=False)
                 )
             result = {
                 "windows_driver_attached": True,
+                "source_host": source_host or "127.0.0.1",
                 "owned_usb_port": owned_port,
                 "windows_hid_reports": len(reports),
                 "new_pnp_devices": new_pnp,
@@ -165,24 +187,33 @@ async def verify(*, effects=False, audio=False, microphone=False, speaker=False)
                     pcm = np.zeros((24000, 4), dtype=np.int16)
                     sd.play(pcm, samplerate=48000, device=candidates[0], blocking=True)
 
-                before_bytes = backend.stats["audio_out_bytes"]
+                before_bytes = backend.stats["audio_out_bytes"] if backend else None
                 await asyncio.to_thread(play_silence)
-                delivered = backend.stats["audio_out_bytes"] - before_bytes
-                if delivered <= 0:
-                    raise RuntimeError("Windows playback delivered no PCM to the Bluetooth bridge")
-                result["windows_four_channel_silent_pcm_bytes"] = delivered
+                if backend:
+                    delivered = backend.stats["audio_out_bytes"] - before_bytes
+                    if delivered <= 0:
+                        raise RuntimeError(
+                            "Windows playback delivered no PCM to the Bluetooth bridge"
+                        )
+                    result["windows_four_channel_silent_pcm_bytes"] = delivered
+                else:
+                    # Delivery must be corroborated with the remote source's counters.
+                    result["windows_four_channel_silent_pcm_submitted_bytes"] = 24000 * 4 * 2
             if microphone or speaker:
                 measurement = await asyncio.to_thread(
                     measure_audio, audio_endpoints, play_speaker=speaker
                 )
-                measurement["bluetooth_mic_decode_errors"] = backend.stats["mic_decode_errors"]
-                measurement["usb_capture_bytes"] = backend.stats["audio_in_bytes"]
-                measurement["bridge_counters"] = dict(backend.stats)
-                measurement["bluetooth_clock_seam"] = backend.clock_seam()
+                if backend:
+                    measurement["bluetooth_mic_decode_errors"] = backend.stats["mic_decode_errors"]
+                    measurement["usb_capture_bytes"] = backend.stats["audio_in_bytes"]
+                    measurement["bridge_counters"] = dict(backend.stats)
+                    measurement["bluetooth_clock_seam"] = backend.clock_seam()
+                else:
+                    measurement["remote_counters_require_separate_check"] = True
                 measurement["signal_checks_passed"] = bool(
                     measurement["microphone_nonzero"]
-                    and not backend.stats["disconnects"]
-                    and not backend.stats["mic_decode_errors"]
+                    and (not backend or not backend.stats["disconnects"])
+                    and (not backend or not backend.stats["mic_decode_errors"])
                     and (not speaker or measurement["speaker_detected_at_physical_microphone"])
                 )
                 result["speaker_microphone"] = measurement
@@ -197,7 +228,8 @@ async def verify(*, effects=False, audio=False, microphone=False, speaker=False)
             finally:
                 if tunnel:
                     await tunnel.stop()
-                await source.stop()
+                if source:
+                    await source.stop()
         for _ in range(50):
             enumerated = await asyncio.to_thread(hid.enumerate, 0x054C, 0x0CE6)
             remaining = [d for d in enumerated if d["path"] not in before_hid]
@@ -207,8 +239,7 @@ async def verify(*, effects=False, audio=False, microphone=False, speaker=False)
         if remaining:
             raise RuntimeError("Virtual HID remained after explicit port detach")
         result["owned_device_detached"] = True
-        output = Path("captures/windows-enumeration.json")
-        output.parent.mkdir(exist_ok=True)
+        output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
         print(json.dumps(result, indent=2))
         if (microphone or speaker) and not result["speaker_microphone"]["signal_checks_passed"]:
@@ -316,9 +347,22 @@ if __name__ == "__main__":
     parser.add_argument(
         "--speaker", action="store_true", help="Play quiet tone and measure it at the mic"
     )
+    parser.add_argument("--source", help="Remote source address; omit for a local physical pad")
+    parser.add_argument("--port", type=int, default=3250)
+    parser.add_argument("--credentials", type=Path, help="Host TLS credentials for a remote source")
+    parser.add_argument("--out", type=Path, default=Path("captures/windows-enumeration.json"))
     args = parser.parse_args()
+    if args.source and not args.credentials:
+        parser.error("--source requires --credentials")
     run_role(
         verify(
-            effects=args.effects, audio=args.audio, microphone=args.microphone, speaker=args.speaker
+            effects=args.effects,
+            audio=args.audio,
+            microphone=args.microphone,
+            speaker=args.speaker,
+            source_host=args.source,
+            source_port=args.port,
+            credentials=args.credentials,
+            output=args.out,
         )
     )

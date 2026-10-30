@@ -41,6 +41,41 @@ for that test only (`studio` mode). Normal runtime uses `pad` mode. The short
 full-duplex run had 8 audio queue underrun frames and 3 microphone reprimes;
 this is a functional signal-path test, not a clean long-duration quality pass.
 
+## Mac Bluetooth -> Windows, 2026-10-29
+
+macOS 26.7.1 arm64, Python 3.14.9, hidapi 0.15.0; same physical standard
+DualSense. The Windows gaming PC runs the signed USB/IP host driver.
+
+| Gate | Evidence / status |
+| --- | --- |
+| Mac input / features | 192 extended reports in 3.013 s (63.7/s); feature 0x05 / 0x09 / 0x20 returned 41 / 20 / 64 B |
+| Mac local TLS parity | 250/250 reports matched except generated USB sequence; 0.997 s |
+| Two-computer route | Mutual TLS inside an OpenSSH loopback forward; direct LAN TLS timed out while the Mac firewall was enabled. No firewall setting changed; cause of the direct failure is unconfirmed |
+| Windows enumeration / triggers | Native Sony HID, render/capture endpoints, 100 HID reads; physical adaptive-trigger status 0x11 then 0; owned detach passed repeatedly |
+| Silent PCM | 192,000 bytes delivered to the Mac backend |
+| Microphone, normal `pad` mode | Nonzero Windows capture: 48,000 measured frames, -45.02 dBFS, zero PortAudio capture overflows; scalar measurements only |
+| Speaker / full duplex | One short acoustic run passed at +14.74 dB, but repeated runs failed the +10 dB threshold (including +5.15 and +7.57 dB). Not a reliable audio pass |
+| Audio buffering | A short remote run received 533,760 output / 741,120 capture bytes; 35 mic reprimes, 7 encoded output-frame drops and 272,640 output-ring overflow bytes; zero BT read, output-write, Opus-decode errors or disconnects. Counters establish substantial quality defects despite signal delivery |
+| Mac-only audio | Drops also reproduced without a network tunnel. A scheduling trial improved one local run but did not resolve the remote defects. Scoped macOS process activity and worker QoS are requested during active controller work |
+| Actual Moonlight stream | Stock Moonlight streamed the new Sunshine Desktop entry at 1280x720/30; its preparation hook attached the pad. During streaming, 1,000 Windows reports included 631 distinct physical motion timestamps in 15.295 s; trigger readback again 0x11 -> 0. This establishes live data, not low latency |
+| Browser acceptance | User connected Windows Chrome/Edge to [DualSense Tester](https://ds.daidr.me/) and reported buttons/sticks/touchpad, vibration, and adaptive-trigger resistance/release all working. A separate 45 s host observation recorded 2,891 reports, 1,717 unique physical timestamps, touch activity and changing controls |
+| Tester's scope | Its input, vibration, LED and trigger controls are useful functional checks. This result does not establish game-specific audio haptics, speaker/microphone quality or equivalence to a wired pad |
+
+The installed Sunshine entry preserves the existing Desktop/Steam apps and
+disables ordinary client controller forwarding to prevent a duplicate virtual
+pad. It uses a dedicated accessible host runtime; the development venv's base
+Python was inaccessible to Sunshine's child process (exit 103). Configuration
+backups remain in the ignored private credentials directory.
+
+The initial teardown trial stopped the source before asynchronous Moonlight quit
+finished. USB detach succeeded, but the source-loss error left a stale ownership
+record. Shutdown now records cleanup confirmation separately from run errors;
+network-loss and failed-detach ownership handling have regression tests.
+
+The project suite currently contains 27 tests (the native scheduling test skips
+on Windows). The preceding Mac baseline ran 20 project and 331 inherited tests
+successfully (39 inherited native-AEC skips). Hardware records remain ignored.
+
 ## Acceptance procedure
 
 1. Run `tools/verify_windows.py` with the verified driver installed. Require one

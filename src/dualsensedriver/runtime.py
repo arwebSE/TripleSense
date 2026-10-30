@@ -15,6 +15,8 @@ from ds5emu.timing import TimerResolution
 
 from .credentials import tls_context
 from .diagnostics import choose_controller, find_usbip, require_controller_isolation
+from .latency import controller_activity, interactive_thread
+from .ssh import SshForward
 from .transport import HostTunnel, SecureSource
 
 log = logging.getLogger(__name__)
@@ -90,10 +92,10 @@ async def source(args) -> None:
         backend = SyntheticBackend()
     else:
         require_controller_isolation()
-        from ds5emu.bridge import BridgeBackend
+        from .controller import ControllerBackend
 
         selected = choose_controller(args.serial)
-        backend = BridgeBackend(serial=selected.serial, mic_mode="pad")
+        backend = ControllerBackend(serial=selected.serial, mic_mode=args.mic_mode)
     server = SecureSource(backend, context, host=args.bind, port=args.port)
     try:
         await server.start()
@@ -102,21 +104,43 @@ async def source(args) -> None:
             f"({'SYNTHETIC: no hardware' if args.synthetic else 'Bluetooth controller'}; TLS 1.3)",
             flush=True,
         )
-        await wait_until_stopped(args.duration)
+        await wait_until_stopped(args.duration, args.stop_file)
     finally:
         await server.stop()
+        if args.stats_out and not args.synthetic:
+            args.stats_out.parent.mkdir(parents=True, exist_ok=True)
+            write_json(
+                args.stats_out,
+                {
+                    "bridge_counters": dict(backend.stats),
+                    "bluetooth_clock_seam": backend.clock_seam(),
+                    "microphone_mode": args.mic_mode,
+                },
+            )
         log.info("Source stopped")
 
 
 async def host(args, *, run_dir: Path | None = None) -> None:
     context = tls_context(Path(args.credentials), server=False)
-    tunnel = HostTunnel(args.source, args.port, context, port=args.local_port)
+    forward = None
+    if getattr(args, "ssh", None):
+        if args.source != "127.0.0.1":
+            raise ValueError("With --ssh, --source must be 127.0.0.1 (on the SSH destination)")
+        forward = SshForward(
+            args.ssh, args.port, identity=args.ssh_identity, known_hosts=args.ssh_known_hosts
+        )
+    tunnel = None
     usbip = find_usbip(args.usbip) if args.attach else None
     if args.attach and not usbip:
         raise RuntimeError("Install usbip-win2 on the Sunshine host first, or provide --usbip.")
     owned_port = None
     serial = "DS5D" + uuid.uuid4().hex[:11]
     try:
+        if forward:
+            await forward.start()
+        tunnel = HostTunnel(
+            args.source, forward.port if forward else args.port, context, port=args.local_port
+        )
         await tunnel.start()
         if usbip:
             output = await run_usbip(
@@ -179,7 +203,14 @@ async def host(args, *, run_dir: Path | None = None) -> None:
             if owned_port and usbip:
                 await detach_owned(usbip, owned_port, tunnel.port, serial)
         finally:
-            await tunnel.stop()
+            try:
+                if tunnel:
+                    await tunnel.stop()
+            finally:
+                if forward:
+                    await forward.stop()
+        if run_dir:
+            write_json(run_dir / "cleanup.json", {"confirmed": True})
 
 
 def run_role(coroutine) -> None:
@@ -202,5 +233,5 @@ def run_role(coroutine) -> None:
         loop.set_exception_handler(exception_handler)
         await coroutine
 
-    with TimerResolution(1):
+    with controller_activity(), interactive_thread(), TimerResolution(1):
         asyncio.run(with_loop_policy())

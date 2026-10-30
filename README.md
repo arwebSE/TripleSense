@@ -1,13 +1,19 @@
-# DualSense Driver
+# DSShine
 
 A Windows DualSense device bridge for **Sunshine + Moonlight**, targeting native
 controller input, adaptive triggers, and the audio path used for detailed haptics.
 
+The command is `dsshine`; the existing `ds5driver` command remains available.
+Repository: [arwebSE/DSShine](https://github.com/arwebSE/DSShine).
+
 **Development prototype.** Local Windows USB/HID/audio enumeration, live input,
 physical adaptive-trigger mode readback, microphone capture, acoustic speaker
 output, four-channel PCM transport and Sunshine start/stop commands have passed.
-Audio tests require Steam isolation on the source PC. Game compatibility, subjective haptic
-quality and two-PC streaming remain unverified.
+Mac-to-Windows input, native USB enumeration, trigger readback and microphone
+signal have also passed. The user confirmed inputs, vibration and adaptive
+triggers in the Windows browser tester. Mac Bluetooth audio currently drops
+frames and has not passed repeatable speaker checks. Audio tests require Steam isolation on
+the source PC. Game compatibility and subjective haptic quality remain unverified.
 See [validation](docs/VALIDATION.md) for current evidence.
 
 ## How it works
@@ -40,7 +46,7 @@ needed path; perceptual equivalence to a wired controller still needs testing.
 ## Setup
 
 Windows x64 host, Python 3.11+, and a **standard DualSense over Bluetooth** on
-the controller PC. A macOS Bluetooth source is being hardware-validated; see
+the controller PC. For the tested macOS Bluetooth source and its audio limits, see
 [Mac Moonlight setup](docs/MACOS.md). USB-connected sources and Edge controllers
 are not yet supported by this integration.
 Exit Steam on the **physical-controller PC** before starting the source or live

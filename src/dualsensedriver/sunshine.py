@@ -19,13 +19,21 @@ WINDOWS_HOST = os.name == "nt"
 def load_config(path: Path) -> argparse.Namespace:
     data = json.loads(path.read_text(encoding="utf-8"))
     required = {"source", "credentials", "usbip"}
-    allowed = required | {"port", "local_port"}
+    allowed = required | {"port", "local_port", "ssh", "ssh_identity", "ssh_known_hosts"}
     if required - data.keys() or data.keys() - allowed:
         raise ValueError(f"Session config requires {required}; allowed keys: {allowed}")
     for key in required:
         if not isinstance(data[key], str) or not data[key]:
             raise ValueError(f"Session config {key} must be a nonempty string")
-    for key in ("credentials", "usbip"):
+    for key in ("ssh", "ssh_identity", "ssh_known_hosts"):
+        if data.get(key) is not None and (not isinstance(data[key], str) or not data[key]):
+            raise ValueError(f"Session config {key} must be a nonempty string")
+        data.setdefault(key, None)
+    if data["ssh"] and data["source"] != "127.0.0.1":
+        raise ValueError("SSH mode requires source 127.0.0.1 (on the SSH destination)")
+    for key in ("credentials", "usbip", "ssh_identity", "ssh_known_hosts"):
+        if data.get(key) is None:
+            continue
         value = Path(data[key])
         data[key] = str((path.parent / value).resolve() if not value.is_absolute() else value)
     for key, default in (("port", 3250), ("local_port", 3247)):
@@ -93,7 +101,9 @@ def start_session(config: Path) -> None:
         (run_dir / "stop").touch()
         # Preserve the ownership file unless shutdown is positively observed.
         if (run_dir / "done.json").exists():
-            state.unlink(missing_ok=True)
+            result = json.loads((run_dir / "done.json").read_text(encoding="utf-8"))
+            if result.get("cleanup_confirmed"):
+                state.unlink(missing_ok=True)
         raise
 
 
@@ -108,8 +118,10 @@ def stop_session(config: Path) -> None:
     while time.monotonic() < deadline:
         if (run_dir / "done.json").exists():
             result = json.loads((run_dir / "done.json").read_text(encoding="utf-8"))
-            if result.get("error"):
+            if result.get("error") and not result.get("cleanup_confirmed"):
                 raise RuntimeError(f"Session cleanup needs inspection: {result['error']}")
+            if result.get("error"):
+                print(f"Session ended with: {result['error']} (cleanup confirmed)")
             state.unlink(missing_ok=True)
             print("DualSense session stopped and its USB port detached.")
             return
@@ -125,10 +137,14 @@ def worker(config: Path, run_dir: Path) -> None:
         error = f"{type(exc).__name__}: {exc}"
         raise
     finally:
-        write_json(run_dir / "done.json", {"error": error})
+        cleanup = run_dir / "cleanup.json"
+        confirmed = cleanup.exists() and json.loads(cleanup.read_text(encoding="utf-8")).get(
+            "confirmed", False
+        )
+        write_json(run_dir / "done.json", {"error": error, "cleanup_confirmed": confirmed})
 
 
-def export_app(config: Path, *, name: str) -> dict:
+def export_app(config: Path, *, name: str, elevated: bool = False) -> dict:
     config = config.resolve()
     load_config(config)
     if not WINDOWS_HOST:
@@ -143,5 +159,5 @@ def export_app(config: Path, *, name: str) -> dict:
         "name": name,
         "cmd": "",
         "image-path": "",
-        "prep-cmd": [{"do": command("start"), "undo": command("stop"), "elevated": True}],
+        "prep-cmd": [{"do": command("start"), "undo": command("stop"), "elevated": elevated}],
     }
