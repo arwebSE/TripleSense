@@ -1,6 +1,7 @@
 # DSShine
 
-Use the DualSense connected to your Mac to play games on your Windows PC.
+Use your DualSense with a gaming computer even when the controller is connected
+to a different computer.
 DSShine sends the controller connection between the two computers, including
 adaptive triggers, vibration and touchpad input.
 
@@ -17,8 +18,13 @@ are our tested setup, but are not required by DSShine.
 ## What you need
 
 - A Windows gaming PC (64-bit).
-- An Apple Silicon Mac and a DualSense connected to it over Bluetooth.
+- A controller computer running Windows or macOS, with a Bluetooth DualSense.
 - Both computers on the same local network.
+
+The gaming computer runs **Server**; the computer beside your controller runs
+**Client**. A Mac is optional. The current Mac download is for Apple Silicon.
+Windows and macOS clients are implemented; Mac-to-Windows is the setup tested
+with a real controller so far. macOS Server support is planned.
 
 You do **not** need Python, SSH, a terminal or developer tools. Everything needed
 by the apps is included; Windows asks for administrator permission to install
@@ -28,10 +34,11 @@ the controller driver. macOS and Linux gaming-PC support is planned.
 
 1. **On Windows:** download and run the Windows installer, then open DSShine
    in **Server** mode.
-2. **On your Mac:** download the Mac disk image, drag DSShine into Applications
-   and open it. Allow Bluetooth and local-network access when asked.
+2. **On the controller computer:** install DSShine and use **Client** mode.
+   On macOS, drag the app from the disk image into Applications; it opens as
+   Client automatically. Allow Bluetooth/local-network access when asked.
 3. **On Windows:** click **Pair client**, then **Generate code**.
-4. **On your Mac:** click **Pair server**, select your Windows PC, enter its
+4. **On the Client:** click **Pair server**, select your gaming PC, enter its
    four-digit code and click **Pair and connect**.
 5. Turn on your DualSense and start your game or stream.
 

@@ -283,11 +283,13 @@ def main(argv=None):
     if sys.platform == "win32":
         import ctypes
 
+        from .windows_taskbar import application_id
+
         # Keep the taskbar separate from Python and match the installer shortcuts.
         identify = ctypes.OleDLL("shell32").SetCurrentProcessExplicitAppUserModelID
         identify.argtypes = [ctypes.c_wchar_p]
         identify.restype = ctypes.c_long
-        result = identify("DSShine.Desktop")
+        result = identify(application_id())
         if result < 0:
             raise OSError(f"Could not set the Windows app identity: {result:#x}")
     if args.repair_setup:
@@ -353,6 +355,10 @@ def main(argv=None):
     if sys.platform == "darwin":
         importlib.import_module("hid")
     window = Window(root, smoke_test=bool(args.smoke_test))
+    if sys.platform == "win32":
+        from .windows_taskbar import set_window_identity
+
+        set_window_identity(int(window.winId()))
     server = QLocalServer()
     server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
     QLocalServer.removeServer(endpoint)
@@ -387,7 +393,8 @@ def main(argv=None):
             except (OSError, RuntimeError) as exc:
                 window.on_event("error", "Could not enable automatic startup: " + str(exc))
     # Accept the legacy flag so existing login entries still open a visible app.
-    window.show()
+    if not args.smoke_test:
+        window.show()
     if args.smoke_test:
 
         def smoke():
@@ -399,6 +406,9 @@ def main(argv=None):
                 )
                 metadata["windows_app_id"] = identity.value
                 ctypes.windll.ole32.CoTaskMemFree(identity)
+                from .windows_taskbar import read_window_identity
+
+                metadata["window_shell"] = read_window_identity(int(window.winId()))
             args.smoke_test.with_suffix(".json").write_text(json.dumps(metadata))
             window.grab().save(str(args.smoke_test))
             window.quit()

@@ -62,6 +62,30 @@ class DesktopTests(unittest.TestCase):
         self.assertTrue(self.window.audio.isChecked())
         self.assertLessEqual(self.window.audio_box.sizeHint().height(), 40)
 
+    @unittest.skipUnless(sys.platform == "win32", "Windows shell properties")
+    def test_native_taskbar_properties_use_our_icon_and_relaunch_command(self):
+        import ctypes
+
+        from dualsensedriver.windows_taskbar import read_window_identity, set_window_identity
+
+        # Other layout tests use Qt's offscreen plugin, whose IDs are not HWNDs.
+        user32 = ctypes.windll.user32
+        user32.CreateWindowExW.restype = ctypes.c_void_p
+        hwnd = user32.CreateWindowExW(
+            0, "STATIC", "DSShine shell test", 0, 0, 0, 32, 32, None, None, None, None
+        )
+        self.assertTrue(hwnd)
+        try:
+            set_window_identity(hwnd)
+            values = read_window_identity(hwnd)
+            self.assertEqual(values["app_id"], "DSShine.Development")
+            self.assertEqual(values["display_name"], "DSShine")
+            self.assertTrue(values["relaunch_icon"].endswith("dsshine.ico,0"))
+            self.assertTrue(Path(values["relaunch_icon"][:-2]).is_file())
+            self.assertIn("-m dualsensedriver.app", values["relaunch_command"])
+        finally:
+            user32.DestroyWindow(ctypes.c_void_p(hwnd))
+
     def test_discovery_updates_preserve_manual_address_and_selected_identity(self):
         window = self.window
         window.manual_address.setText("192.168.1.190")

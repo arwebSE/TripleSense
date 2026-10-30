@@ -1,5 +1,14 @@
 # Planned platform support
 
+DSShine is a controller bridge between computers, independently of video-streaming
+software. macOS is a supported Client platform, not a requirement. Windows Client
+is implemented too; only Mac-to-Windows currently has live hardware acceptance
+evidence in this project.
+
+Before claiming a broadly useful release, validate Windows-to-Windows input,
+feedback and cleanup, and fix continuous Bluetooth speaker/microphone/haptics
+audio. These are functional release requirements alongside simple installation.
+
 DSShine currently creates the virtual DualSense on Windows using usbip-win2.
 This is a limitation of DSShine's current server backend, not Sunshine:
 Sunshine itself supports Windows, macOS and Linux.

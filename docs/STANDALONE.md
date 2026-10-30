@@ -1,6 +1,6 @@
 # Standalone app
 
-DSShine forwards a whole DualSense independently of streaming software.
+DSShine forwards a whole DualSense between computers independently of streaming software.
 Install it on the Windows game PC and on the computer with the Bluetooth
 DualSense. Your streaming app handles video, ordinary game audio, keyboard
 and mouse separately. No streaming app or paid controller driver is required.
@@ -9,9 +9,13 @@ Python, Git, SSH or developer tools. Windows setup installs the included signed
 USB/IP driver and needs administrator permission. The current packages target
 Windows x64 and Apple Silicon Macs.
 
+A Mac is optional: Windows can run Client as well as Server. macOS currently
+runs Client only, with Server support planned. Mac-to-Windows is the combination
+tested with a real controller; Windows-to-Windows still needs live validation.
+
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.4.7-Windows-x64.exe`. The installer includes
+1. **Windows:** run `DSShine-Setup-0.4.8-Windows-x64.exe`. The installer includes
    the signed USB/IP driver and adds app-specific local-subnet firewall rules.
    It does not change your streaming software or restart Windows automatically.
 2. **Mac:** open `DSShine-macOS.dmg` and drag DSShine into Applications,
