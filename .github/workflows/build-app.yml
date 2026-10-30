@@ -31,9 +31,9 @@ jobs:
         run: python tools/build_app.py
       - uses: actions/upload-artifact@v4
         with:
-          name: DSShine-${{ runner.os }}-${{ runner.arch }}
+          name: TripleSense-${{ runner.os }}-${{ runner.arch }}
           path: |
-            dist/DSShine-Setup-*.exe
-            dist/DSShine-macOS.zip
-            dist/DSShine-macOS.dmg
+            dist/TripleSense-Setup-*.exe
+            dist/TripleSense-macOS.zip
+            dist/TripleSense-macOS.dmg
           if-no-files-found: error

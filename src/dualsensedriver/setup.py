@@ -20,7 +20,7 @@ def repair_windows():
     if not find_usbip():
         installer = bundled_installer()
         if not installer:
-            raise RuntimeError("Reinstall DSShine to restore its bundled controller driver")
+            raise RuntimeError("Reinstall TripleSense to restore its bundled controller driver")
         result = subprocess.run(
             [str(installer), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], check=False
         )
@@ -31,7 +31,7 @@ def repair_windows():
         ("Controller", "TCP", "3250-3251"),
         ("Discovery", "UDP", "5353,3252"),
     ):
-        rule = "DSShine - " + name
+        rule = "TripleSense - " + name
         subprocess.run(
             [netsh, "advfirewall", "firewall", "delete", "rule", "name=" + rule],
             capture_output=True,
@@ -59,7 +59,7 @@ def repair_windows():
 
 def request_repair():
     if sys.platform != "win32" or not getattr(sys, "frozen", False):
-        raise RuntimeError("Install DSShine to use automatic setup repair")
+        raise RuntimeError("Install TripleSense to use automatic setup repair")
     result = ctypes.windll.shell32.ShellExecuteW(
         None, "runas", sys.executable, "--repair-setup", None, 0
     )

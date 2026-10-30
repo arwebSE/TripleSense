@@ -180,14 +180,14 @@ class Window(QMainWindow):
         )
         if sys.platform != "win32":
             self.current_role = "controller"
-        self.setWindowTitle("DSShine")
+        self.setWindowTitle("TripleSense")
         self.resize(640, 410)
         self.setMinimumWidth(600)
         self._build()
         self.tooltip_filter = DisabledTooltips(self)
         QApplication.instance().installEventFilter(self.tooltip_filter)
         self.setWindowIcon(QIcon(str(Path(__file__).with_name("assets") / "dsshine.svg")))
-        quit_action = QAction("Quit DSShine", self)
+        quit_action = QAction("Quit TripleSense", self)
         quit_action.setShortcut("Ctrl+Q" if sys.platform == "win32" else "Meta+Q")
         quit_action.triggered.connect(self.quit)
         self.addAction(quit_action)
@@ -246,7 +246,7 @@ class Window(QMainWindow):
         )
         mark.setFixedSize(36, 36)
         header.addWidget(mark)
-        title = label("DSShine", "brand")
+        title = label("TripleSense", "brand")
         header.addWidget(title, 1)
         self.mode_button = button("Change mode", self._open_modes)
         self.mode_button.setVisible(sys.platform == "win32")
@@ -537,13 +537,13 @@ class Window(QMainWindow):
 
     def _build_settings(self):
         self.settings = QDialog(self)
-        self.settings.setWindowTitle("DSShine settings")
+        self.settings.setWindowTitle("TripleSense settings")
         self.settings.setMinimumWidth(480)
         layout = QVBoxLayout(self.settings)
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)
         layout.addWidget(label("Settings", "heading"))
-        self.login = QCheckBox("Start DSShine when I log in")
+        self.login = QCheckBox("Start TripleSense when I log in")
         self.login.setChecked(bool(self.preferences.get("launch_at_login", False)))
         self.login.setEnabled(bool(getattr(sys, "frozen", False)))
         self.login.toggled.connect(self._login_changed)
@@ -567,7 +567,7 @@ class Window(QMainWindow):
             button(
                 "Downloads and updates…",
                 lambda: QDesktopServices.openUrl(
-                    QUrl("https://github.com/arwebSE/DSShine/releases")
+                    QUrl("https://github.com/arwebSE/TripleSense/releases")
                 ),
             )
         )
@@ -577,7 +577,7 @@ class Window(QMainWindow):
 
     def _build_logs(self):
         self.logs = QDialog(self)
-        self.logs.setWindowTitle("DSShine logs")
+        self.logs.setWindowTitle("TripleSense logs")
         self.logs.resize(700, 420)
         layout = QVBoxLayout(self.logs)
         self.details = QPlainTextEdit()
@@ -850,7 +850,7 @@ class Window(QMainWindow):
         for pc in sorted(self.computers.values(), key=lambda item: item["dsshine"]):
             by_address[pc["address"]] = pc
         for pc in by_address.values():
-            suffix = "" if pc["dsshine"] else " · open DSShine here first"
+            suffix = "" if pc["dsshine"] else " · open TripleSense here first"
             transport = pc.get("transport", "LAN")
             item = QListWidgetItem(pc["name"] + " · " + transport + "\n" + pc["address"] + suffix)
             item.setIcon(route_icon(transport))
@@ -1034,7 +1034,7 @@ class Window(QMainWindow):
         if "Pairing failed" in message:
             return "Pairing failed"
         if "10048" in message or "Address already in use" in message:
-            return "Another DSShine copy is running"
+            return "Another TripleSense copy is running"
         if any(
             text in message
             for text in ("route", "Connect call failed", "refused", "10060", "timed out")
@@ -1047,7 +1047,7 @@ class Window(QMainWindow):
         if "Expected one Bluetooth DualSense" in message:
             return "Press PS to connect your DualSense to this Client over Bluetooth."
         if "Steam is running" in message:
-            return "Quit Steam on this Client so DSShine can access the controller."
+            return "Quit Steam on this Client so TripleSense can access the controller."
         if "CERTIFICATE_VERIFY_FAILED" in message:
             return "The pairing has expired or changed. Pair with your Server again."
         if "Pairing failed" in message:
@@ -1060,7 +1060,7 @@ class Window(QMainWindow):
                 "Server unreachable. Check its address, VPN and Windows firewall, then try again."
             )
         if "10048" in message or "Address already in use" in message:
-            return "Another DSShine copy is using the connection. Quit it and try again."
+            return "Another TripleSense copy is using the connection. Quit it and try again."
         return message if len(message) <= 160 else "Connection failed. Open Logs for details."
 
     def on_event(self, kind, value):
@@ -1182,7 +1182,7 @@ class Window(QMainWindow):
             paired = bool(self.preferences.get("game_credentials"))
             self.status.setText("Waiting for client" if paired else "Pair your client")
             self.description.setText(
-                "Open DSShine on the computer connected to your DualSense."
+                "Open TripleSense on the computer connected to your DualSense."
                 if paired
                 else "Pair once, then reconnect automatically."
             )

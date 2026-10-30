@@ -1,4 +1,4 @@
-# DSShine development
+# TripleSense development
 
 This guide is for contributors. For installation and everyday use, start with
 [the user README](../README.md).
@@ -10,15 +10,15 @@ This guide is for contributors. For installation and everyday use, start with
 A streaming-independent Windows DualSense device bridge, targeting native
 controller input, adaptive triggers, and the audio path used for detailed haptics.
 
-**Desktop preview:** DSShine now has a standalone Windows/Mac app with LAN
+**Desktop preview:** TripleSense now has a standalone Windows/Mac app with LAN
 discovery, one-time PIN pairing, automatic reconnection and safe shutdown when the main window closes.
 The Windows installer includes the free signed controller-bus driver and setup
 for local-network access. Users do not need Python, SSH, manual certificates or prep commands.
 See [standalone setup](STANDALONE.md). The CLI below remains available for
 development and diagnostics.
 
-The command is `dsshine`; the existing `ds5driver` command remains available.
-Repository: [arwebSE/DSShine](https://github.com/arwebSE/DSShine).
+The command is `triplesense`; `dsshine` and `ds5driver` remain compatible aliases.
+Repository: [arwebSE/TripleSense](https://github.com/arwebSE/TripleSense).
 
 **Development prototype.** Local Windows USB/HID/audio enumeration, live input,
 physical adaptive-trigger mode readback, microphone capture, acoustic speaker

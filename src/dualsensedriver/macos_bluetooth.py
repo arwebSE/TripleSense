@@ -1,4 +1,4 @@
-"""HIDAPI-compatible access to DSShine's owned macOS Bluetooth HID channels."""
+"""HIDAPI-compatible access to TripleSense's owned macOS Bluetooth HID channels."""
 
 from __future__ import annotations
 
@@ -58,7 +58,9 @@ class NativeHID:
     def open_path(self, _path):
         path = helper_path()
         if not path.is_file():
-            raise OSError("DSShine's native Bluetooth helper is missing. Reinstall DSShine.")
+            raise OSError(
+                "TripleSense's native Bluetooth helper is missing. Reinstall TripleSense."
+            )
         with self._lifecycle_lock:
             if self._closed.is_set():
                 raise OSError("Bluetooth connection cancelled.")
@@ -76,7 +78,7 @@ class NativeHID:
         if not self._ready.wait(23):
             self.close()
             raise OSError(
-                "Bluetooth connection timed out. Allow DSShine Bluetooth access and press PS."
+                "Bluetooth connection timed out. Allow TripleSense Bluetooth access and press PS."
             )
         if self._error or self._closed.is_set():
             self.close()

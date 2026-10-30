@@ -7,7 +7,7 @@ commit `2e24ffbfafd6d9ccd454a9a8b436e2696be426ce` (MIT).
 Local changes: `prototype/ds5bridge/device.py` now uses HIDAPI `bus_type`
 metadata to identify Bluetooth / USB devices on macOS, retaining the Windows
 path fallback. `emulator/ds5emu/bridge.py` adds an overridable device factory so
-DSShine can select its native Mac Bluetooth transport. Other vendored source
+TripleSense can select its native Mac Bluetooth transport. Other vendored source
 files remain unmodified.
 
 Included: `emulator/ds5emu`, `emulator/tests`, `prototype/ds5bridge`, the two
