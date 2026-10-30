@@ -566,7 +566,10 @@ class Window(QMainWindow):
                 "WinError 10060",
             )
         ):
-            message = "Check that DSShine is open on the game PC and both computers are on the same network."
+            message = (
+                "Check that DSShine is open on the game PC "
+                "and both computers are on the same network."
+            )
             if sys.platform == "darwin":
                 message += " Allow DSShine in Privacy & Security → Local Network."
         if kind == "error":
