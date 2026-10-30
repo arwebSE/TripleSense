@@ -51,8 +51,8 @@ def peer_addresses(provider, status):
     return result
 
 
-def targets():
-    addresses = set()
+def routes():
+    addresses = {}
     for provider in ("tailscale", "netbird"):
         path = executable(provider)
         if not path:
@@ -66,7 +66,12 @@ def targets():
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
             )
             if result.returncode == 0:
-                addresses.update(peer_addresses(provider, json.loads(result.stdout)))
+                for address in peer_addresses(provider, json.loads(result.stdout)):
+                    addresses[address] = "Tailscale" if provider == "tailscale" else "NetBird"
         except (OSError, subprocess.TimeoutExpired, ValueError, TypeError, AttributeError):
             continue  # An absent/stopped VPN must not break LAN discovery.
     return addresses
+
+
+def targets():
+    return set(routes())

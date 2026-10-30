@@ -32,8 +32,8 @@ Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
 Source: "{#BundleDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\DSShine"; Filename: "{app}\DSShine.exe"; AppUserModelID: "me.dsshine.app"
-Name: "{autodesktop}\DSShine"; Filename: "{app}\DSShine.exe"; Tasks: desktopicon; AppUserModelID: "me.dsshine.app"
+Name: "{group}\DSShine"; Filename: "{app}\DSShine.exe"; IconFilename: "{app}\_internal\dualsensedriver\assets\dsshine.ico"; AppUserModelID: "me.dsshine.app"
+Name: "{autodesktop}\DSShine"; Filename: "{app}\DSShine.exe"; IconFilename: "{app}\_internal\dualsensedriver\assets\dsshine.ico"; Tasks: desktopicon; AppUserModelID: "me.dsshine.app"
 
 [Run]
 Filename: "{app}\_internal\installers\USBip-0.9.8.1-x64.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"; StatusMsg: "Installing the controller driver…"; Check: NeedsControllerDriver; Flags: waituntilterminated

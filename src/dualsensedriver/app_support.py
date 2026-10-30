@@ -111,6 +111,7 @@ class Discovery:
                             "address": address,
                             "name": name.removesuffix("." + service_type)[:64],
                             "dsshine": service_type == SERVICE,
+                            "transport": "LAN",
                         },
                     )
                     break

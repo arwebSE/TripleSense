@@ -95,11 +95,12 @@ class VpnDiscoveryTests(unittest.TestCase):
             game.advertise()
             with (
                 patch("dualsensedriver.lan.broadcast_addresses", return_value=set()),
-                patch("dualsensedriver.lan.vpn.targets", return_value={"127.0.0.1"}),
+                patch("dualsensedriver.lan.vpn.routes", return_value={"127.0.0.1": "Tailscale"}),
             ):
                 client = LanDiscovery(notify, "vpn-client", port=port)
                 self.assertTrue(ready.wait(3))
                 self.assertEqual(found[0]["host_id"], "vpn-game")
+                self.assertEqual(found[0]["transport"], "Tailscale")
                 client.close()
                 client = None
         finally:
