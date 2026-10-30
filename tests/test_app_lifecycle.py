@@ -11,8 +11,8 @@ from dualsensedriver.reverse import GameReceiver
 
 
 class AudioOptInTests(unittest.TestCase):
-    def test_default_app_does_not_arm_mic_or_queue_audio(self):
-        backend = StandaloneControllerBackend()
+    def test_explicit_audio_off_does_not_arm_mic_or_queue_audio(self):
+        backend = StandaloneControllerBackend(audio_enabled=False)
         backend.set_alt_setting(1, 1)
         backend.set_alt_setting(2, 1)
         backend.write_audio_out(bytes(384))
@@ -20,6 +20,9 @@ class AudioOptInTests(unittest.TestCase):
         self.assertFalse(backend._mic_armed.is_set())
         self.assertEqual(backend.read_audio_in(192), bytes(192))
         self.assertEqual(backend.stats["audio_out_bytes"], 0)
+
+    def test_audio_is_enabled_by_default(self):
+        self.assertTrue(StandaloneControllerBackend().audio_enabled)
 
 
 class AppCleanupTests(unittest.IsolatedAsyncioTestCase):

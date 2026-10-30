@@ -54,6 +54,18 @@ def button(text, callback, *, primary=False):
     return value
 
 
+class PageStack(QStackedWidget):
+    """Hidden pairing controls must not dictate the connection window size."""
+
+    def sizeHint(self):
+        page = self.currentWidget()
+        return page.sizeHint() if page else super().sizeHint()
+
+    def minimumSizeHint(self):
+        page = self.currentWidget()
+        return page.minimumSizeHint() if page else super().minimumSizeHint()
+
+
 class Window(QMainWindow):
     def __init__(self, root, *, smoke_test=False):
         from .app import AppEngine, Events
@@ -70,12 +82,13 @@ class Window(QMainWindow):
             "role", "game" if sys.platform == "win32" else "controller"
         )
         self.setWindowTitle("DSShine")
-        self.resize(720, 590)
-        self.setMinimumSize(660, 570)
+        self.resize(640, 410)
+        self.setMinimumWidth(600)
         self._build()
         self._tray()
         self._show_role()
         self._refresh_computers()
+        self._fit_page()
         self.retry = QTimer(self)
         self.retry.timeout.connect(self._auto_connect)
         if not smoke_test:
@@ -86,8 +99,8 @@ class Window(QMainWindow):
         container = QWidget()
         self.setCentralWidget(container)
         outer = QVBoxLayout(container)
-        outer.setContentsMargins(28, 22, 28, 18)
-        outer.setSpacing(16)
+        outer.setContentsMargins(24, 20, 24, 16)
+        outer.setSpacing(12)
         header = QHBoxLayout()
         title = label("DSShine", "brand")
         header.addWidget(title, 1)
@@ -106,11 +119,12 @@ class Window(QMainWindow):
         outer.addLayout(header)
         self.role_caption = label("", "muted")
         outer.addWidget(self.role_caption)
-        self.pages = QStackedWidget()
+        self.pages = PageStack()
         self.connection_page = self._connection_page()
         self.pair_page = self._pair_page()
         self.pages.addWidget(self.connection_page)
         self.pages.addWidget(self.pair_page)
+        self.pages.currentChanged.connect(self._fit_page)
         outer.addWidget(self.pages, 1)
         footer = QHBoxLayout()
         footer.addWidget(label("v" + __version__, "muted"), 1)
@@ -120,36 +134,43 @@ class Window(QMainWindow):
         self._build_settings()
         self._build_logs()
         self.setStyleSheet("""
-            QWidget { background: #12171e; color: #e9eff5; font-size: 14px; }
+            QWidget { background: #0b0c0e; color: #f0f1f3; font-size: 14px; }
             QLabel { background: transparent; }
             QLabel#brand { font-size: 28px; font-weight: 700; }
-            QLabel#muted { color: #9baabd; }
+            QLabel#muted { color: #a1a5ad; }
+            QLabel[tone="success"], QLabel#muted[tone="success"] { color: #79e3a6; }
+            QLabel[tone="info"], QLabel#muted[tone="info"] { color: #91caff; }
+            QLabel[tone="danger"], QLabel#muted[tone="danger"],
+            QLabel#code[tone="danger"] { color: #ff858e; }
+            QLabel[tone="warning"] { color: #edc479; }
             QLabel#status { font-size: 25px; font-weight: 600; }
             QLabel#heading { font-size: 20px; font-weight: 600; }
-            QLabel#code { font-size: 38px; font-weight: 600; color: #80deca; }
-            QFrame#card { background: #1c2530; border: 1px solid #334253;
+            QLabel#code { font-size: 38px; font-weight: 600; color: #91caff; }
+            QFrame#card { background: #15171a; border: 1px solid #2c2f34;
                           border-radius: 12px; }
             QFrame#card QWidget { background: transparent; }
-            QPushButton { background: #232e3b; border: 1px solid #3a4a5c;
+            QPushButton { background: #1c1e22; border: 1px solid #373a40;
                           border-radius: 7px; padding: 0px 14px; }
-            QPushButton:hover { background: #304154; }
-            QPushButton:disabled { color: #6f8196; border-color: #2c3948; }
-            QPushButton#mode { background: transparent; color: #a6b4c5; }
-            QPushButton#mode:checked { background: #2a3c4b; color: #b5f3e3;
-                                      border-color: #6dbaa7; }
-            QPushButton#primary { background: #80deca; color: #102923;
+            QPushButton:hover { background: #2a2d32; }
+            QPushButton:disabled { color: #686d76; border-color: #26292e; }
+            QPushButton#mode { background: transparent; color: #a1a5ad; }
+            QPushButton#mode:checked { background: #282b30; color: #f0f1f3;
+                                      border-color: #737983; }
+            QPushButton#primary { background: #79e3a6; color: #10291a;
                                   border: none; font-weight: 600; }
-            QPushButton#primary:hover { background: #a4ecdc; }
-            QPushButton#primary:disabled { background: #263c39; color: #8aa6a0; }
-            QLineEdit, QListWidget, QPlainTextEdit { background: #10161e;
-                border: 1px solid #3a4a5c; border-radius: 7px; padding: 7px; }
-            QLineEdit { min-height: 22px; selection-background-color: #356a60; }
+            QPushButton#primary:hover { background: #9eebbf; }
+            QPushButton#primary[intent="danger"] { background: #ff858e; color: #2d0c11; }
+            QPushButton#primary[intent="danger"]:hover { background: #ffa1a8; }
+            QPushButton#primary:disabled { background: #25282d; color: #777d86; }
+            QLineEdit, QListWidget, QPlainTextEdit { background: #0d0e10;
+                border: 1px solid #373a40; border-radius: 7px; padding: 7px; }
+            QLineEdit { min-height: 22px; selection-background-color: #34495c; }
             QListWidget::item { border-radius: 5px; padding: 5px 10px; }
-            QListWidget::item:selected { background: #294c49; color: #c9fff0; }
+            QListWidget::item:selected { background: #292c31; color: #f0f1f3; }
             QCheckBox { spacing: 10px; }
-            QCheckBox::indicator { width: 16px; height: 16px; border: 1px solid #73869b;
-                                   border-radius: 4px; background: #10161e; }
-            QCheckBox::indicator:checked { background: #80deca; border-color: #80deca; }
+            QCheckBox::indicator { width: 16px; height: 16px; border: 1px solid #777d87;
+                                   border-radius: 4px; background: #0d0e10; }
+            QCheckBox::indicator:checked { background: #79e3a6; border-color: #79e3a6; }
         """)
 
     def _connection_page(self):
@@ -160,33 +181,32 @@ class Window(QMainWindow):
         card = QFrame()
         card.setObjectName("card")
         content = QVBoxLayout(card)
-        content.setContentsMargins(24, 22, 24, 22)
-        content.setSpacing(12)
+        content.setContentsMargins(20, 18, 20, 18)
+        content.setSpacing(8)
         self.status = label("Starting…", "status", wrap=True)
         self.description = label("Checking the connection.", "muted", wrap=True)
         content.addWidget(self.status)
         content.addWidget(self.description)
-        content.addStretch(1)
+        content.addSpacing(12)
         self.peer_label = label("", "muted")
         self.peer_name = label("", wrap=True)
         content.addWidget(self.peer_label)
         content.addWidget(self.peer_name)
         self.addresses = label("", "muted", wrap=True)
         content.addWidget(self.addresses)
-        layout.addWidget(card, 1)
-        self.audio_box = QFrame()
-        self.audio_box.setObjectName("card")
-        audio_layout = QVBoxLayout(self.audio_box)
-        audio_layout.setContentsMargins(18, 14, 18, 14)
-        audio_layout.setSpacing(6)
+        layout.addWidget(card)
+        self.audio_box = QWidget()
+        audio_layout = QHBoxLayout(self.audio_box)
+        audio_layout.setContentsMargins(0, 2, 0, 2)
+        audio_layout.setSpacing(12)
         self.audio = QCheckBox("Controller audio")
-        self.audio.setChecked(bool(self.preferences.get("audio", False)))
+        self.audio.setChecked(bool(self.preferences.get("audio", True)))
+        self.audio.setToolTip("Forward the controller speaker, microphone and audio haptics.")
         self.audio.toggled.connect(lambda value: self._perform(self.engine.set_audio(value)))
         audio_layout.addWidget(self.audio)
-        audio_layout.addWidget(label("Speaker · microphone · audio haptics", "muted"))
-        self.audio_status = label("Off", "muted", wrap=True)
-        audio_layout.addWidget(self.audio_status)
-        audio_layout.addWidget(label("Experimental: Bluetooth audio can drop out.", "muted"))
+        self.audio_status = label("", "muted", wrap=True)
+        audio_layout.addWidget(self.audio_status, 1)
+        self.audio_status.hide()
         layout.addWidget(self.audio_box)
         actions = QHBoxLayout()
         self.pair_button = button("Pair client", self._open_pairing)
@@ -195,6 +215,7 @@ class Window(QMainWindow):
         actions.addStretch(1)
         actions.addWidget(self.connect_button)
         layout.addLayout(actions)
+        layout.addStretch(1)
         return page
 
     def _pair_page(self):
@@ -346,6 +367,25 @@ class Window(QMainWindow):
         self.peer_label.setText("PAIRED CLIENT" if server else "PAIRED SERVER")
         self._update_peer()
         self._update_actions()
+        if hasattr(self, "settings"):
+            self._fit_page()
+
+    def _fit_page(self):
+        if not hasattr(self, "pages") or not self.pages.currentWidget():
+            return
+        self.pages.updateGeometry()
+        self.centralWidget().layout().invalidate()
+        self.centralWidget().layout().activate()
+        pairing = self.pages.currentWidget() is getattr(self, "pair_page", None)
+        height = (
+            (530 if self.current_role == "controller" else 430)
+            if pairing
+            else (440 if self.current_role == "controller" else 404)
+        )
+        self.setMinimumHeight(height)
+        self.resize(
+            max(640, self.minimumSizeHint().width()), max(height, self.minimumSizeHint().height())
+        )
 
     def _update_peer(self):
         if self.current_role == "game":
@@ -371,6 +411,7 @@ class Window(QMainWindow):
         )
         if not paired:
             self.connect_button.setText("Pair client" if server else "Pair server")
+        self._tone(self.connect_button, "danger" if active and paired else "positive", "intent")
         self.pair_button.setText("Pair client" if server else "Change server")
         self.pair_button.setVisible(paired)
         for control in (
@@ -405,6 +446,7 @@ class Window(QMainWindow):
         self.server_pair.setVisible(server)
         self.client_pair.setVisible(not server)
         self.pages.setCurrentWidget(self.pair_page)
+        self._fit_page()
         self.pair_error.clear()
         if not server:
             self._perform(self.engine.rescan())
@@ -453,6 +495,7 @@ class Window(QMainWindow):
             self.hosts.addItem(item)
 
     def _pair_client(self):
+        self._tone(self.pair_error, "danger")
         if self.server_choices.currentIndex() == 1:
             address = self.manual_address.text().strip()
         else:
@@ -469,6 +512,7 @@ class Window(QMainWindow):
             return
         self.engine.submit(self.engine.update_preferences("game_address", address))
         self.pair_error.setText("Pairing with server…")
+        self._tone(self.pair_error, "info")
         self._perform(self.engine.pair(address, code))
 
     def _toggle(self):
@@ -539,6 +583,13 @@ class Window(QMainWindow):
             self.on_event("error", str(exc))
 
     @staticmethod
+    def _tone(widget, value, property_name="tone"):
+        widget.setProperty(property_name, value)
+        widget.style().unpolish(widget)
+        widget.style().polish(widget)
+        widget.update()
+
+    @staticmethod
     def _friendly_error(message):
         if "Expected one Bluetooth DualSense" in message:
             return "Press PS to connect your DualSense to this Client over Bluetooth."
@@ -581,15 +632,21 @@ class Window(QMainWindow):
                 else "Generate a new code to continue pairing."
             )
             self.generate.setText("Generate a new code")
+            self._tone(self.pin, "info" if value else "danger")
             return  # Pairing codes are never written to logs.
         if kind == "audio_status":
-            self.audio_status.setText(str(value).replace("game PC", "Server"))
+            stalled = "stall" in str(value)
+            self.audio_status.setText("Bluetooth audio is dropping out" if stalled else "")
+            self.audio_status.setVisible(stalled and self.audio.isChecked())
+            self.audio.setToolTip(str(value).replace("game PC", "Server"))
+            self._tone(self.audio_status, "danger" if stalled else "info")
             return
         message = str(value or "")
         self.details.appendPlainText(
             datetime.now().strftime("%H:%M:%S") + "  " + kind + ": " + message
         )
         if kind == "error":
+            self._tone(self.pair_error, "danger")
             self.status.setText("Connection needs attention")
             self.description.setText(self._friendly_error(message))
             self.pair_error.setText(self._friendly_error(message))
@@ -654,7 +711,19 @@ class Window(QMainWindow):
         elif kind == "discovery_unavailable":
             self.pair_error.setText("Discovery is unavailable. Enter a Server address instead.")
         if not self.audio.isChecked():
-            self.audio_status.setText("Off · game sound continues through Moonlight")
+            self.audio_status.hide()
+        tone = (
+            "danger"
+            if kind in ("error", "controller_waiting", "stopped")
+            else "success"
+            if kind in ("connected", "paired")
+            else "warning"
+            if kind == "driver_needed"
+            else "info"
+        )
+        if kind == "stopped" and not paired:
+            tone = "info"
+        self._tone(self.status, tone)
         self._update_peer()
         self._update_actions()
 

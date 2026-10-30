@@ -74,6 +74,7 @@ class AppEngine:
 
     async def initialize(self):
         self.preferences.setdefault("computer_id", uuid.uuid4().hex)
+        self.preferences.setdefault("audio", True)
         self.save()
         try:
             self.discovery = await asyncio.to_thread(
@@ -194,7 +195,7 @@ class AppEngine:
 
             backend = StandaloneControllerBackend(
                 serial=selected.serial,
-                audio_enabled=bool(self.preferences.get("audio", False)),
+                audio_enabled=bool(self.preferences.get("audio", True)),
             )
             connection = ControllerConnection(profile, backend, self.notify)
             await connection.start()

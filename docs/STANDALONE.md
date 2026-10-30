@@ -46,9 +46,9 @@ Some games need to be restarted after a controller is recreated.
 ## Controller audio
 
 Input, ordinary vibration and adaptive triggers use the previously validated
-controller backend. **Controller audio is off by default.** Enable
-it in the app to try controller speaker/microphone and detailed audio
-haptics. Mac Bluetooth audio still has measured stalls and dropouts, and this
+controller backend. **Controller audio is on by default.** Its compact switch
+controls the controller speaker/microphone and detailed audio haptics.
+Mac Bluetooth audio still has measured stalls and dropouts, and this
 setting does not imply clean audio or game-specific haptic compatibility.
 
 Changing the switch reconnects the controller automatically. Audio status

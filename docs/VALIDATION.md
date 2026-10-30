@@ -146,12 +146,19 @@ server list and a separate manual-address panel, preserving the typed address
 when discovery updates.
 
 Windows and Mac renders were inspected for connected, disconnected, pairing,
-manual entry and settings states at 720×590. Layout regression checks exercise
-both roles at 660×570, including an error message, visible action bounds and
-separation between the server list and code input. The 47 project tests pass on
+manual entry and settings states. The connection views now fit their contents
+at about 640×405 (Server) and 640×442 (Client), instead of expanding the status
+card to fill a tall window. Pairing can use a taller window, then returning to
+the connection view restores the compact size. Layout regression checks exercise
+both roles, including an error message, visible action bounds and separation
+between the server list and code input. The 49 project tests pass on
 Windows (one native skip) and macOS. Packaged Windows and Mac builds passed
 their GUI/codec smoke checks. The redesign preserves the existing audio path
-and its outstanding Mac Bluetooth quality limitations.
+and its outstanding Mac Bluetooth quality limitations. Audio now defaults on,
+with an explicit off preference preserved. The audio control is one compact row;
+a short warning appears only when audio stalls. The palette uses black and
+charcoal, green for connected/positive actions, blue for waiting/information,
+and red for errors and the Disconnect/Stop server actions.
 
 ## Acceptance procedure
 

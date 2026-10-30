@@ -24,9 +24,9 @@ class ControllerBackend(BridgeBackend):
 
 
 class StandaloneControllerBackend(ControllerBackend):
-    """Keep experimental controller audio opt-in in the desktop app."""
+    """Forward controller audio by default; preserve an explicit off setting."""
 
-    def __init__(self, *, audio_enabled=False, **kwargs):
+    def __init__(self, *, audio_enabled=True, **kwargs):
         self.audio_enabled = audio_enabled
         super().__init__(auto_arm=audio_enabled, **kwargs)
 

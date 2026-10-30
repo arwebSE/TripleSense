@@ -37,6 +37,8 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(self.window.findChildren(QComboBox), [])
         self.assertIsNot(self.window.details.window(), self.window)
         self.assertIsNot(self.window.login.window(), self.window)
+        self.assertTrue(self.window.audio.isChecked())
+        self.assertLessEqual(self.window.audio_box.sizeHint().height(), 40)
 
     def test_discovery_updates_preserve_manual_address_and_selected_identity(self):
         window = self.window
@@ -56,7 +58,7 @@ class DesktopTests(unittest.TestCase):
 
     def test_connection_and_pairing_fit_at_minimum_window_size(self):
         window = self.window
-        window.resize(660, 570)
+        window.resize(640, 440)
         for role in ("game", "controller"):
             window.current_role = role
             window._show_role()
@@ -65,9 +67,12 @@ class DesktopTests(unittest.TestCase):
                 window.server_pair.setVisible(role == "game")
                 window.client_pair.setVisible(role == "controller")
                 window.pages.setCurrentWidget(page)
+                window._fit_page()
                 self.application.processEvents()
                 self.assertLessEqual(window.height(), 590)
-                self.assertGreater(window.pages.height(), 300)
+                if page is window.connection_page:
+                    self.assertLessEqual(window.height(), 460)
+                self.assertGreater(window.pages.height(), 200)
                 for child in page.findChildren(QPushButton):
                     if child.isVisible():
                         position = child.mapTo(page, child.rect().bottomRight())
@@ -85,3 +90,18 @@ class DesktopTests(unittest.TestCase):
         self.window.on_event("pair_code", "12345678")
         self.assertEqual(self.window.pin.text(), "1234 5678")
         self.assertNotIn("1234", self.window.details.toPlainText())
+
+    def test_connected_status_and_disconnect_action_have_different_intents(self):
+        window = self.window
+        window.current_role = "controller"
+        window.preferences["controller_profile"] = {"name": "Server"}
+        window.engine.connection = object()
+        try:
+            window.on_event("connected", "")
+            self.assertEqual(window.status.property("tone"), "success")
+            self.assertEqual(window.connect_button.text(), "Disconnect")
+            self.assertEqual(window.connect_button.property("intent"), "danger")
+            window.on_event("error", "Connect call failed")
+            self.assertEqual(window.status.property("tone"), "danger")
+        finally:
+            window.engine.connection = None

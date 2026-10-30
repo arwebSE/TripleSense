@@ -30,7 +30,7 @@ Vibration and touchpad input were confirmed in the earlier browser test.
 Controller speaker, microphone and full audio-driven haptics are requirements.
 Their transport exists, but Mac Bluetooth audio currently stalls and drops out;
 it is not a completed feature. The app exposes the audio switch and reports
-streaming stalls. Audio is off by default until enabled explicitly.
+streaming stalls. Controller audio is on by default and can be switched off.
 
 The Mac preview is locally signed and not Apple notarized. macOS may require
 Open Anyway for a downloaded build. No game-specific or long-session quality
