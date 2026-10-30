@@ -2,6 +2,7 @@ import asyncio
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 from ds5bridge.protocol import SetState, build_usb_setstate
 from ds5emu import wire as W
@@ -83,6 +84,15 @@ class AppPairingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.paired, [])
         self.assertFalse((self.root / "controller").exists())
         self.assertEqual(self.offer.attempts, 1)
+
+    async def test_network_timeout_has_actionable_message(self):
+        with patch(
+            "dualsensedriver.pairing.asyncio.open_connection", new_callable=AsyncMock
+        ) as dial:
+            dial.side_effect = TimeoutError()
+            with self.assertRaisesRegex(TimeoutError, "VPN connection and Windows firewall"):
+                await pair_controller("100.97.43.25", self.offer.code, self.root / "client")
+        self.assertFalse((self.root / "client").exists())
 
     async def test_expired_pin_is_rejected(self):
         self.offer.expires = 0

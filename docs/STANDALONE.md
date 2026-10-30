@@ -15,17 +15,18 @@ tested with a real controller; Windows-to-Windows still needs live validation.
 
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.4.8-Windows-x64.exe`. The installer includes
-   the signed USB/IP driver and adds app-specific local-subnet firewall rules.
+1. **Windows:** run `DSShine-Setup-0.4.9-Windows-x64.exe`. The installer includes
+   the signed USB/IP driver and adds app-specific LAN and private-VPN firewall rules.
    It does not change your streaming software or restart Windows automatically.
 2. **Mac:** open `DSShine-macOS.dmg` and drag DSShine into Applications,
    and open it. Allow local-network access if macOS asks. The current preview
    is locally signed, not Developer ID signed/notarized; a downloaded preview
    may require macOS's Open Anyway action once.
-3. On Windows, **Server** is selected. Click **Pair client**, then **Generate code**.
-4. On the Mac, **Client** is selected. Click **Pair server**, select the discovered
-   server, enter the code shown on Windows and click **Pair and connect**. The code is
-   needed once; identities are exchanged and stored automatically.
+3. On Windows, choose **Server**. A four-digit pairing code appears automatically
+   and copies to the clipboard.
+4. On the Client, enter the Server address and its code, then click **Connect**.
+   Use **Find on LAN** for nearby servers, or enter the Server's Tailscale/NetBird
+   address when connecting through your own VPN. Pairing is saved automatically.
 5. Pair the DualSense to the Mac over Bluetooth and turn it on. Exit Steam on
    the physical-controller computer. Stream an ordinary Desktop/game entry
    through your preferred streaming app, if you use one.
@@ -84,13 +85,21 @@ The underlying USB/IP listener is bound only to Windows loopback.
 
 The normal connection uses TCP 3250. The pairing listener uses TCP 3251 only
 while a code is active; discovery uses mDNS and UDP 3252 broadcast.
-Installer firewall exceptions are
-restricted to the DSShine executable, the local subnet on Private and Public networks.
-Both computers must be reachable on the same LAN. Router client isolation,
-multicast/broadcast filtering can prevent discovery or connection. Use
-**Refresh** on the Client pairing screen to retry. **Enter address** offers a
-manual address field without replacing the discovered-server list.
-Paired PCs track IP changes through discovery while retaining their TLS identity.
+Installer firewall exceptions restrict TCP access to the DSShine executable,
+local subnets and `100.64.0.0/10`, used by Tailscale and default NetBird networks.
+Discovery remains restricted to local subnets. No router port forwarding is needed.
+Custom VPN address ranges need a matching firewall rule.
+
+Both computers must be reachable on the LAN or through your private VPN. VPN
+access policies must allow the connection. LAN discovery normally does not cross
+VPNs: enter the Server's VPN address directly. Manual addresses are retained even
+when LAN discovery finds another address for the same server. Tailscale controller
+input and adaptive-trigger feedback have passed a live test; NetBird's firewall
+scope is covered, but live NetBird controller forwarding remains unverified.
+
+The Client saves paired servers with online/offline indicators. Select one and
+click **Connect**; **Add server** pairs another, and **Remove** forgets the selected
+server and its credentials. Disconnect before changing the selected server.
 
 Identities expire after a year; pair again to renew them. App data is stored
 under `%LOCALAPPDATA%/DSShine` on Windows and
@@ -99,11 +108,11 @@ Logs contain connection diagnostics, not microphone recordings.
 
 ## If setup needs attention
 
-- **No server found:** click **Refresh** on the Client pairing screen. Make sure
+- **No server found:** click **Find on LAN**, or enter the Server address directly. Make sure
   DSShine is open on Windows. On the Mac, use **Settings → Network permissions**
   and allow DSShine.
 - **Windows refuses a connection:** click **Settings → Repair Windows setup**
-  and accept its administrator prompt. This repairs the driver and local-subnet
+  and accept its administrator prompt. This repairs the driver and LAN/private-VPN
   firewall rules only.
 - **Controller asleep:** press PS. DSShine waits for it and reconnects.
 - **Steam owns the controller:** close Steam on the Mac. Steam can remain open
@@ -117,13 +126,12 @@ competing controller instance.
 ## Interface
 
 **Change mode** on Windows opens explicit **Server** and **Client** choices.
-Stop the server or disconnect before changing modes; hover over the disabled
+Disconnect before changing modes; hover over the disabled
 button for help. The macOS app is Client-only and has no mode selector.
 Server runs on the Windows game PC; Client runs beside the controller.
 macOS and Linux Server support is [planned](ROADMAP.md). The connection view
 shows status, the paired computer, controller audio on the Client, and the main
-connection action. **Stop server** stops accepting the controller; **Disconnect**
-disconnects the Client. Neither action stops your streaming software.
+connection action. **Disconnect** stops the controller connection on either computer. Neither action stops your streaming software.
 
 Pairing has its own screen. Discovered servers are listed by name and address;
 there is no dropdown. Settings and Logs open in separate windows. The connection

@@ -360,7 +360,7 @@ class ControllerConnection:
                 await self.source._tracked_client(reader, writer)
             except (OSError, ValueError, TimeoutError, asyncio.IncompleteReadError) as exc:
                 if not self.closing and not self.source.imported:
-                    self.notify("reconnecting", "Looking for the game PC: " + str(exc))
+                    self.notify("reconnecting", str(exc).strip() or "Server connection timed out")
             finally:
                 if writer:
                     self.writers.discard(writer)

@@ -19,7 +19,8 @@ are our tested setup, but are not required by DSShine.
 
 - A Windows gaming PC (64-bit).
 - A controller computer running Windows or macOS, with a Bluetooth DualSense.
-- Both computers on the same local network.
+- Both computers on the same local network, or connected through your own
+  private VPN such as Tailscale or NetBird.
 
 The gaming computer runs **Server**; the computer beside your controller runs
 **Client**. A Mac is optional. The current Mac download is for Apple Silicon.
@@ -37,13 +38,16 @@ the controller driver. macOS and Linux gaming-PC support is planned.
 2. **On the controller computer:** install DSShine and use **Client** mode.
    On macOS, drag the app from the disk image into Applications; it opens as
    Client automatically. Allow Bluetooth/local-network access when asked.
-3. **On Windows:** click **Pair client**, then **Generate code**.
-4. **On the Client:** click **Pair server**, select your gaming PC, enter its
-   four-digit code and click **Pair and connect**.
+3. **On Windows:** Server shows a four-digit pairing code automatically.
+4. **On the Client:** enter the Server address and code, then click **Connect**.
+   **Find on LAN** can find nearby servers. For a VPN, enter the Server's VPN
+   address instead; LAN discovery usually does not cross VPN connections.
 5. Turn on your DualSense and start your game or stream.
 
 Pairing is saved, so you only need the code once. New codes copy automatically;
 **Copy code** copies the displayed code again.
+The Client keeps a saved-server list with online/offline indicators. Use
+**Add server** to pair another computer, or **Remove** to forget an old one.
 
 If your streaming app also forwards controllers, disable that feature if it
 causes duplicate input. DSShine does not change your streaming app's settings.
@@ -65,4 +69,4 @@ For connection problems, see [setup and troubleshooting](docs/STANDALONE.md).
 ---
 
 For contributors: [development guide](docs/DEVELOPMENT.md) ·
-[credits and upstream project](docs/UPSTREAM.md)
+[credits and upstream project](docs/UPSTREAM.md) · [platform and feature plan](docs/PRODUCT.md)

@@ -50,7 +50,9 @@ def repair_windows():
                 "protocol=" + protocol,
                 "localport=" + ports,
                 "profile=private,public",
-                "remoteip=localsubnet",
+                "remoteip=localsubnet,100.64.0.0/10"
+                if protocol == "TCP"
+                else "remoteip=localsubnet",
             ],
             capture_output=True,
             check=True,

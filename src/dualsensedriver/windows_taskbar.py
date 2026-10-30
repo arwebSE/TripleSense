@@ -8,7 +8,7 @@ import sys
 import uuid
 from pathlib import Path
 
-APP_ID = "DSShine.Desktop"
+APP_ID = "me.dsshine.app"
 PROPERTY_IDS = {"relaunch_command": 2, "relaunch_icon": 3, "display_name": 4, "app_id": 5}
 
 
