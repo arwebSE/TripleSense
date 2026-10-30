@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import concurrent.futures
+import json
 import logging
 import os
 import sys
@@ -652,6 +653,20 @@ def main(argv=None):
     parser.add_argument("--smoke-test", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--background", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.smoke_test:
+        try:
+            from ds5bridge.audio import silent_opus_frame
+
+            from .controller import StandaloneControllerBackend
+
+            # Import and exercise the frozen codec stack without opening HID.
+            packet = silent_opus_frame()
+            if len(packet) != 200:
+                raise RuntimeError("The bundled Opus encoder returned an invalid frame")
+            StandaloneControllerBackend()
+        except Exception as exc:
+            args.smoke_test.with_suffix(".json").write_text(json.dumps({"error": str(exc)}))
+            return 1
     application = QApplication(sys.argv[:1])
     application.setApplicationName("DSShine")
     application.setOrganizationName("DSShine")

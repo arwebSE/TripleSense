@@ -8,6 +8,8 @@ import os
 import shutil
 import subprocess
 import sys
+import sysconfig
+import tempfile
 from pathlib import Path
 
 from dualsensedriver import __version__
@@ -40,6 +42,7 @@ def notices():
         "hidapi",
         "PySide6-Essentials",
         "shiboken6",
+        "pyinstaller",
     ):
         distribution = importlib.metadata.distribution(name)
         folder = destination / name
@@ -55,6 +58,14 @@ def notices():
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(path, target)
         packages.append({"name": name, "version": distribution.version})
+    python_licenses = (
+        Path(sys.base_prefix) / "LICENSE.txt",
+        Path(sysconfig.get_path("stdlib")) / "LICENSE.txt",
+    )
+    python_license = next((path for path in python_licenses if path.is_file()), None)
+    if python_license is None:
+        raise RuntimeError("Could not find the bundled Python runtime license")
+    shutil.copy2(python_license, destination / "Python-LICENSE.txt")
     (destination / "DEPENDENCIES.json").write_text(json.dumps(packages, indent=2), encoding="utf-8")
     if sys.platform == "win32":
         # Retain the driver's BSD-2-Clause notice when distributing its unmodified installer.
@@ -185,6 +196,31 @@ def main():
             ],
             check=True,
         )
+    executable = (
+        ROOT / "dist" / "DSShine" / "DSShine.exe"
+        if sys.platform == "win32"
+        else ROOT / "dist" / "DSShine.app/Contents/MacOS/DSShine"
+    )
+    # Validate the frozen dependency stack and GUI, not just PyInstaller's exit
+    # status. No hardware is opened; each smoke run uses isolated temporary data.
+    with tempfile.TemporaryDirectory(prefix="dsshine-build-") as temporary:
+        preview = Path(temporary) / "window.png"
+        smoke_environment = environment.copy()
+        smoke_environment["QT_QPA_PLATFORM"] = "offscreen"
+        subprocess.run(
+            [
+                str(executable),
+                "--data-dir",
+                str(Path(temporary) / "data"),
+                "--smoke-test",
+                str(preview),
+            ],
+            check=True,
+            timeout=30,
+            env=smoke_environment,
+        )
+        if not preview.is_file():
+            raise RuntimeError("The packaged application did not complete its launch check")
 
 
 if __name__ == "__main__":
