@@ -250,6 +250,11 @@ def main():
         )
         if not preview.is_file():
             raise RuntimeError("The packaged application did not complete its launch check")
+        metadata = json.loads(preview.with_suffix(".json").read_text())
+        if not metadata.get("icon_valid"):
+            raise RuntimeError("The packaged application icon is missing")
+        if sys.platform == "win32" and metadata.get("windows_app_id") != "DSShine.Desktop":
+            raise RuntimeError("The packaged Windows taskbar identity is incorrect")
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ import uuid
 from pathlib import Path
 
 from PySide6.QtCore import QLockFile, QObject, QTimer, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import (
     QApplication,
@@ -280,10 +280,21 @@ def main(argv=None):
     parser.add_argument("--quit", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--repair-setup", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if sys.platform == "win32":
+        import ctypes
+
+        # Keep the taskbar separate from Python and match the installer shortcuts.
+        identify = ctypes.OleDLL("shell32").SetCurrentProcessExplicitAppUserModelID
+        identify.argtypes = [ctypes.c_wchar_p]
+        identify.restype = ctypes.c_long
+        result = identify("DSShine.Desktop")
+        if result < 0:
+            raise OSError(f"Could not set the Windows app identity: {result:#x}")
     if args.repair_setup:
         from .setup import repair_windows
 
         application = QApplication(sys.argv[:1])
+        application.setWindowIcon(QIcon(str(Path(__file__).with_name("assets") / "dsshine.png")))
         try:
             changed = repair_windows()
             QMessageBox.information(
@@ -311,6 +322,7 @@ def main(argv=None):
             args.smoke_test.with_suffix(".json").write_text(json.dumps({"error": str(exc)}))
             return 1
     application = QApplication(sys.argv[:1])
+    application.setWindowIcon(QIcon(str(Path(__file__).with_name("assets") / "dsshine.png")))
     application.setApplicationName("DSShine")
     application.setOrganizationName("DSShine")
     application.setQuitOnLastWindowClosed(False)
@@ -380,6 +392,15 @@ def main(argv=None):
     if args.smoke_test:
 
         def smoke():
+            metadata = {"icon_valid": not window.windowIcon().pixmap(32, 32).isNull()}
+            if sys.platform == "win32":
+                identity = ctypes.c_wchar_p()
+                ctypes.windll.shell32.GetCurrentProcessExplicitAppUserModelID(
+                    ctypes.byref(identity)
+                )
+                metadata["windows_app_id"] = identity.value
+                ctypes.windll.ole32.CoTaskMemFree(identity)
+            args.smoke_test.with_suffix(".json").write_text(json.dumps(metadata))
             window.grab().save(str(args.smoke_test))
             window.quit()
 

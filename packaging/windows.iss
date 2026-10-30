@@ -5,7 +5,7 @@
 [Setup]
 AppId={{E0B8344E-9715-4E9F-B769-0E0C7B51D65A}
 AppName=DSShine
-AppVersion=0.4.5
+AppVersion=0.4.6
 AppPublisher=DSShine contributors
 AppPublisherURL=https://github.com/arwebSE/DSShine
 DefaultDirName={autopf}\DSShine
@@ -15,7 +15,7 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64os
 ArchitecturesInstallIn64BitMode=x64os
 OutputDir={#ProjectRoot}\dist
-OutputBaseFilename=DSShine-Setup-0.4.5-Windows-x64
+OutputBaseFilename=DSShine-Setup-0.4.6-Windows-x64
 Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern
@@ -33,8 +33,8 @@ Name: sunshine; Description: "Let DSShine handle controllers (disable Sunshine c
 Source: "{#BundleDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\DSShine"; Filename: "{app}\DSShine.exe"
-Name: "{autodesktop}\DSShine"; Filename: "{app}\DSShine.exe"; Tasks: desktopicon
+Name: "{group}\DSShine"; Filename: "{app}\DSShine.exe"; AppUserModelID: "DSShine.Desktop"
+Name: "{autodesktop}\DSShine"; Filename: "{app}\DSShine.exe"; Tasks: desktopicon; AppUserModelID: "DSShine.Desktop"
 
 [Run]
 Filename: "{app}\_internal\installers\USBip-0.9.8.1-x64.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"; StatusMsg: "Installing the controller driver…"; Check: NeedsControllerDriver; Flags: waituntilterminated

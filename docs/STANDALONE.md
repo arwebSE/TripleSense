@@ -7,7 +7,7 @@ and mouse. No paid virtual-controller driver or Sunshine fork is required.
 
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.4.5-Windows-x64.exe`. The installer includes
+1. **Windows:** run `DSShine-Setup-0.4.6-Windows-x64.exe`. The installer includes
    the signed USB/IP driver, adds app-specific local-subnet firewall rules,
    and offers to disable Sunshine controller forwarding. It backs up the
    Sunshine setting and does not restart Windows or Sunshine automatically.
