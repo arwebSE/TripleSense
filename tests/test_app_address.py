@@ -32,6 +32,10 @@ class DesktopTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.window = Window(Path(self.temporary.name), smoke_test=True)
+        self.offer_patch = patch.object(
+            self.window.engine, "_create_pairing_offer", new_callable=AsyncMock
+        )
+        self.offer_patch.start()
         self.window.show()
         self.application.processEvents()
 
@@ -43,6 +47,7 @@ class DesktopTests(unittest.TestCase):
         self.window.close()
         self.application.processEvents()
         self.temporary.cleanup()
+        self.offer_patch.stop()
 
     def test_closing_main_window_quits_instead_of_hiding(self):
         window = self.window
@@ -62,6 +67,30 @@ class DesktopTests(unittest.TestCase):
         self.assertTrue(self.window.audio.isChecked())
         self.assertLessEqual(self.window.audio_box.sizeHint().height(), 40)
 
+    @unittest.skipUnless(sys.platform == "win32", "Windows shell properties")
+    def test_native_taskbar_properties_use_our_icon_and_relaunch_command(self):
+        import ctypes
+
+        from dualsensedriver.windows_taskbar import read_window_identity, set_window_identity
+
+        # Other layout tests use Qt's offscreen plugin, whose IDs are not HWNDs.
+        user32 = ctypes.windll.user32
+        user32.CreateWindowExW.restype = ctypes.c_void_p
+        hwnd = user32.CreateWindowExW(
+            0, "STATIC", "DSShine shell test", 0, 0, 0, 32, 32, None, None, None, None
+        )
+        self.assertTrue(hwnd)
+        try:
+            set_window_identity(hwnd)
+            values = read_window_identity(hwnd)
+            self.assertEqual(values["app_id"], "DSShine.Development")
+            self.assertEqual(values["display_name"], "DSShine")
+            self.assertTrue(values["relaunch_icon"].endswith("dsshine.ico,0"))
+            self.assertTrue(Path(values["relaunch_icon"][:-2]).is_file())
+            self.assertIn("-m dualsensedriver.app", values["relaunch_command"])
+        finally:
+            user32.DestroyWindow(ctypes.c_void_p(hwnd))
+
     def test_discovery_updates_preserve_manual_address_and_selected_identity(self):
         window = self.window
         window.manual_address.setText("192.168.1.190")
@@ -69,6 +98,7 @@ class DesktopTests(unittest.TestCase):
             "game": {"id": "game", "name": "Server", "address": "192.168.1.190", "dsshine": True}
         }
         window._refresh_computers()
+        window.hosts.setCurrentRow(0)
         window.computers["game"]["address"] = "192.168.1.191"
         window._refresh_computers()
         self.assertEqual(window.manual_address.text(), "192.168.1.190")
@@ -93,17 +123,21 @@ class DesktopTests(unittest.TestCase):
                 self.application.processEvents()
                 self.assertLessEqual(window.height(), 590)
                 if page is window.connection_page:
-                    self.assertLessEqual(window.height(), 460)
+                    self.assertLessEqual(window.height(), 540)
                 self.assertGreater(window.pages.height(), 200)
                 for child in page.findChildren(QPushButton):
                     if child.isVisible():
                         position = child.mapTo(page, child.rect().bottomRight())
-                        self.assertLessEqual(position.y(), page.height())
+                        self.assertLessEqual(
+                            position.y(),
+                            page.height(),
+                            (role, page is window.pair_page, child.text()),
+                        )
                 if page is window.pair_page and role == "controller":
                     window.pair_error.setText("Server is unreachable. Check network permissions.")
                     self.application.processEvents()
-                    choices_bottom = window.server_choices.mapTo(
-                        page, window.server_choices.rect().bottomLeft()
+                    choices_bottom = window.manual_address.mapTo(
+                        page, window.manual_address.rect().bottomLeft()
                     ).y()
                     code_top = window.code.mapTo(page, window.code.rect().topLeft()).y()
                     self.assertLess(choices_bottom, code_top)
@@ -118,6 +152,29 @@ class DesktopTests(unittest.TestCase):
         self.window.on_event("pair_code", "")
         self.assertFalse(self.window.copy_code.isEnabled())
         self.assertNotIn("1234", self.window.details.toPlainText())
+
+    def test_pairing_timeout_stays_visible_and_reenables_retry(self):
+        window = self.window
+        window.current_role = "controller"
+        window._show_role()
+        window._open_pairing()
+        window.manual_address.setText("100.97.43.25")
+        window.code.setText("1234")
+        with patch.object(window.engine, "pair", new_callable=AsyncMock) as pair:
+            pair.side_effect = TimeoutError()
+            window._pair_client()
+            self.assertEqual(window.pair_submit.text(), "Connecting…")
+            self.assertFalse(window.pair_submit.isEnabled())
+            deadline = time.monotonic() + 2
+            while window.busy and time.monotonic() < deadline:
+                self.application.processEvents()
+                time.sleep(0.01)
+        self.assertTrue(window.pair_submit.isEnabled())
+        self.assertEqual(window.pair_submit.text(), "Connect")
+        self.assertEqual(window.pair_error.property("tone"), "danger")
+        self.assertIn("VPN", window.pair_error.text())
+        self.assertIs(window.pages.currentWidget(), window.pair_page)
+        self.assertNotIn("1234", window.details.toPlainText())
 
     def test_connected_status_and_disconnect_action_have_different_intents(self):
         window = self.window
@@ -187,7 +244,7 @@ class DesktopTests(unittest.TestCase):
         window.busy = False
         window._update_actions()
         self.assertFalse(window.mode_button.isEnabled())
-        self.assertEqual(window.mode_button.toolTip(), "Stop server to change mode")
+        self.assertEqual(window.mode_button.toolTip(), "Disconnect to change mode")
         window._role_changed("controller")
         self.assertEqual(window.current_role, "game")
         window.connect_button.click()
@@ -201,7 +258,7 @@ class DesktopTests(unittest.TestCase):
         self._wait_for_mode("controller")
         self.assertIsNone(window.engine.receiver)
         self.assertTrue(window.role_caption.text().startswith("CLIENT"))
-        self.assertIs(window.pages.currentWidget(), window.connection_page)
+        self.assertIs(window.pages.currentWidget(), window.pair_page)
         settings = json.loads((window.root / "settings.json").read_text())
         self.assertEqual(settings["role"], "controller")
         if sys.platform == "win32":

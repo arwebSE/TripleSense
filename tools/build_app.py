@@ -235,7 +235,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="dsshine-build-") as temporary:
         preview = Path(temporary) / "window.png"
         smoke_environment = environment.copy()
-        smoke_environment["QT_QPA_PLATFORM"] = "offscreen"
+        smoke_environment["QT_QPA_PLATFORM"] = "windows" if sys.platform == "win32" else "offscreen"
         subprocess.run(
             [
                 str(executable),
@@ -253,8 +253,18 @@ def main():
         metadata = json.loads(preview.with_suffix(".json").read_text())
         if not metadata.get("icon_valid"):
             raise RuntimeError("The packaged application icon is missing")
-        if sys.platform == "win32" and metadata.get("windows_app_id") != "DSShine.Desktop":
+        if sys.platform == "win32" and metadata.get("windows_app_id") != "me.dsshine.app":
             raise RuntimeError("The packaged Windows taskbar identity is incorrect")
+        if sys.platform == "win32":
+            shell = metadata.get("window_shell", {})
+            if (
+                shell.get("app_id") != "me.dsshine.app"
+                or not shell.get("relaunch_icon", "").endswith("dsshine.ico,0")
+                or not Path(shell["relaunch_icon"][:-2]).is_file()
+                or "DSShine.exe" not in shell.get("relaunch_command", "")
+                or shell.get("display_name") != "DSShine"
+            ):
+                raise RuntimeError("The packaged taskbar icon/relaunch properties are incorrect")
 
 
 if __name__ == "__main__":

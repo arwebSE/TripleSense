@@ -1,6 +1,7 @@
 # DSShine
 
-Use the DualSense connected to your Mac to play games on your Windows PC.
+Use your DualSense with a gaming computer even when the controller is connected
+to a different computer.
 DSShine sends the controller connection between the two computers, including
 adaptive triggers, vibration and touchpad input.
 
@@ -17,8 +18,14 @@ are our tested setup, but are not required by DSShine.
 ## What you need
 
 - A Windows gaming PC (64-bit).
-- An Apple Silicon Mac and a DualSense connected to it over Bluetooth.
-- Both computers on the same local network.
+- A controller computer running Windows or macOS, with a Bluetooth DualSense.
+- Both computers on the same local network, or connected through your own
+  private VPN such as Tailscale or NetBird.
+
+The gaming computer runs **Server**; the computer beside your controller runs
+**Client**. A Mac is optional. The current Mac download is for Apple Silicon.
+Windows and macOS clients are implemented; Mac-to-Windows is the setup tested
+with a real controller so far. macOS Server support is planned.
 
 You do **not** need Python, SSH, a terminal or developer tools. Everything needed
 by the apps is included; Windows asks for administrator permission to install
@@ -28,15 +35,19 @@ the controller driver. macOS and Linux gaming-PC support is planned.
 
 1. **On Windows:** download and run the Windows installer, then open DSShine
    in **Server** mode.
-2. **On your Mac:** download the Mac disk image, drag DSShine into Applications
-   and open it. Allow Bluetooth and local-network access when asked.
-3. **On Windows:** click **Pair client**, then **Generate code**.
-4. **On your Mac:** click **Pair server**, select your Windows PC, enter its
-   four-digit code and click **Pair and connect**.
+2. **On the controller computer:** install DSShine and use **Client** mode.
+   On macOS, drag the app from the disk image into Applications; it opens as
+   Client automatically. Allow Bluetooth/local-network access when asked.
+3. **On Windows:** Server shows a four-digit pairing code automatically.
+4. **On the Client:** enter the Server address and code, then click **Connect**.
+   **Find on LAN** can find nearby servers. For a VPN, enter the Server's VPN
+   address instead; LAN discovery usually does not cross VPN connections.
 5. Turn on your DualSense and start your game or stream.
 
 Pairing is saved, so you only need the code once. New codes copy automatically;
 **Copy code** copies the displayed code again.
+The Client keeps a saved-server list with online/offline indicators. Use
+**Add server** to pair another computer, or **Remove** to forget an old one.
 
 If your streaming app also forwards controllers, disable that feature if it
 causes duplicate input. DSShine does not change your streaming app's settings.
@@ -58,4 +69,4 @@ For connection problems, see [setup and troubleshooting](docs/STANDALONE.md).
 ---
 
 For contributors: [development guide](docs/DEVELOPMENT.md) ·
-[credits and upstream project](docs/UPSTREAM.md)
+[credits and upstream project](docs/UPSTREAM.md) · [platform and feature plan](docs/PRODUCT.md)

@@ -170,7 +170,12 @@ async def pair_controller(address, code, root, *, port=PAIR_PORT):
         raise ValueError("Enter the four-digit code shown on the game PC")
     exchange = SPAKE2_A(code.encode("ascii"), **IDENTITIES)
     message_a = await asyncio.to_thread(exchange.start)
-    reader, writer = await asyncio.wait_for(asyncio.open_connection(address, port), 5)
+    try:
+        reader, writer = await asyncio.wait_for(asyncio.open_connection(address, port), 5)
+    except TimeoutError as exc:
+        raise TimeoutError(
+            "Server connection timed out. Check the address, VPN connection and Windows firewall."
+        ) from exc
     try:
         await send_frame(writer, message_a)
         message_b = await read_frame(reader, 256)
@@ -218,7 +223,9 @@ async def pair_controller(address, code, root, *, port=PAIR_PORT):
             "name": str(payload.get("name", "Game PC"))[:64],
             "host_id": str(payload.get("host_id", ""))[:64],
         }
-    except (OSError, TimeoutError):
+    except TimeoutError as exc:
+        raise TimeoutError("Pairing timed out. Generate a new Server code and try again.") from exc
+    except OSError:
         raise
     except Exception as exc:
         raise ValueError(

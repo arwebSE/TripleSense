@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -18,6 +19,7 @@ from PySide6.QtGui import (
     QPen,
     QPixmap,
 )
+from PySide6.QtNetwork import QNetworkInterface
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -40,7 +42,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from . import __version__
+from . import __version__, saved_servers
 from .app_support import load_preferences, local_addresses, set_launch_at_login
 
 
@@ -118,7 +120,8 @@ class Window(QMainWindow):
         self.events.event.connect(self.on_event)
         self.engine = AppEngine(root, self.preferences, self.events.event.emit)
         self.computers = {}
-        self.busy = self.connected = self.quitting = self.closing = False
+        self.server_states = {}
+        self.busy = self.connected = self.quitting = self.closing = self.pairing_client = False
         self.current_role = self.preferences.get(
             "role", "game" if sys.platform == "win32" else "controller"
         )
@@ -316,7 +319,9 @@ class Window(QMainWindow):
         self.description = label("Checking the connection.", "muted", wrap=True)
         content.addWidget(self.status)
         content.addWidget(self.description)
-        content.addSpacing(12)
+        self.peer_gap = QWidget()
+        self.peer_gap.setFixedHeight(8)
+        content.addWidget(self.peer_gap)
         self.peer_label = label("", "muted")
         self.peer_name = label("", wrap=True)
         content.addWidget(self.peer_label)
@@ -324,6 +329,23 @@ class Window(QMainWindow):
         self.addresses = label("", "muted", wrap=True)
         content.addWidget(self.addresses)
         layout.addWidget(card)
+        self.saved_box = QWidget()
+        saved_layout = QVBoxLayout(self.saved_box)
+        saved_layout.setContentsMargins(0, 0, 0, 0)
+        saved_layout.setSpacing(8)
+        saved_header = QHBoxLayout()
+        saved_header.addWidget(label("Saved servers"), 1)
+        self.add_server = button("Add server", self._open_pairing)
+        self.remove_server = button("Remove", self._forget_server)
+        saved_header.addWidget(self.add_server)
+        saved_header.addWidget(self.remove_server)
+        saved_layout.addLayout(saved_header)
+        self.saved_list = QListWidget()
+        self.saved_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.saved_list.setFixedHeight(126)
+        self.saved_list.currentItemChanged.connect(self._select_saved_server)
+        saved_layout.addWidget(self.saved_list)
+        layout.addWidget(self.saved_box)
         self.audio_box = QWidget()
         audio_layout = QHBoxLayout(self.audio_box)
         audio_layout.setContentsMargins(0, 2, 0, 2)
@@ -353,9 +375,10 @@ class Window(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
         row = QHBoxLayout()
-        self.pair_heading = label("Pair a client", "heading")
+        self.pair_heading = label("Connect a client", "heading")
         row.addWidget(self.pair_heading, 1)
-        row.addWidget(button("Back", self._back))
+        self.pair_back = button("Back", self._back)
+        row.addWidget(self.pair_back)
         layout.addLayout(row)
         self.pair_instructions = label("", "muted", wrap=True)
         layout.addWidget(self.pair_instructions)
@@ -363,22 +386,23 @@ class Window(QMainWindow):
         server = QVBoxLayout(self.server_pair)
         server.setContentsMargins(0, 4, 0, 4)
         server.setSpacing(14)
+        self.pair_addresses = label("", "muted", wrap=True)
+        self.pair_addresses.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        server.addWidget(self.pair_addresses)
         self.pin = label("", "code")
         self.pin.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.pin.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         server.addStretch(1)
         server.addWidget(self.pin)
-        self.pin_hint = label(
-            "Generate a code, then enter it in the Client app.", "muted", wrap=True
-        )
+        self.pin_hint = label("Creating a pairing code…", "muted", wrap=True)
         self.pin_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         server.addWidget(self.pin_hint)
         server.addStretch(1)
-        self.generate = button("Generate code", self._generate_code, primary=True)
+        self.generate = button("New code", self._generate_code)
         code_actions = QHBoxLayout()
         code_actions.addStretch(1)
         code_actions.addWidget(self.generate)
-        self.copy_code = button("Copy code", self._copy_code)
+        self.copy_code = button("Copy code", self._copy_code, primary=True)
         self.copy_code.setEnabled(False)
         code_actions.addWidget(self.copy_code)
         code_actions.addStretch(1)
@@ -389,47 +413,47 @@ class Window(QMainWindow):
         client.setContentsMargins(0, 0, 0, 0)
         client.setSpacing(8)
         heading = QHBoxLayout()
-        heading.addWidget(label("Available servers"), 1)
-        self.manual_toggle = button("Enter address", self._toggle_manual)
-        heading.addWidget(self.manual_toggle)
-        self.rescan = button("Refresh", lambda: self._perform(self.engine.rescan()))
+        heading.addWidget(label("Server address"), 1)
+        self.rescan = button("Find on LAN", lambda: self.engine.submit(self.engine.rescan()))
         heading.addWidget(self.rescan)
         client.addLayout(heading)
-        self.server_choices = QStackedWidget()
-        self.server_choices.setFixedHeight(144)
-        self.hosts = QListWidget()
-        self.hosts.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.hosts.setWordWrap(True)
-        self.server_choices.addWidget(self.hosts)
-        manual = QWidget()
-        manual_layout = QVBoxLayout(manual)
-        manual_layout.setContentsMargins(0, 4, 0, 4)
-        manual_layout.addWidget(label("Server IP address or hostname"))
         self.manual_address = QLineEdit()
-        self.manual_address.setPlaceholderText("For example, 192.168.1.190")
+        self.manual_address.setPlaceholderText("LAN / VPN IP address or hostname")
+        self.manual_address.setToolTip("Use the server's LAN, Tailscale or NetBird address.")
         self.manual_address.setText(
             self.preferences.get("game_address")
             or self.preferences.get("controller_profile", {}).get("address", "")
         )
         self.manual_address.editingFinished.connect(self._remember_address)
-        manual_layout.addWidget(self.manual_address)
-        manual_layout.addWidget(label("The address is shown in the Server app.", "muted"))
-        manual_layout.addStretch(1)
-        self.server_choices.addWidget(manual)
-        client.addWidget(self.server_choices)
+        client.addWidget(self.manual_address)
+        self.hosts = QListWidget()
+        self.hosts.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.hosts.setWordWrap(True)
+        self.hosts.setFixedHeight(92)
+        self.hosts.itemClicked.connect(self._choose_discovered)
+        client.addWidget(self.hosts)
+        self.discovery_hint = label(
+            "Enter the address shown on the Server, or use its VPN address.", "muted", wrap=True
+        )
+        client.addWidget(self.discovery_hint)
         code_row = QHBoxLayout()
-        code_row.addWidget(label("Pairing code"), 1)
+        code_row.addWidget(label("Pairing code"))
         self.code = QLineEdit()
-        self.code.setPlaceholderText("4-digit code from Server")
+        self.code.setPlaceholderText("0000")
         self.code.setMaxLength(4)
-        self.code.setFixedWidth(210)
+        self.code.setFixedWidth(100)
+        self.code.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.code.returnPressed.connect(self._pair_client)
         code_row.addWidget(self.code)
+        code_row.addStretch(1)
         client.addLayout(code_row)
         self.pair_error = label("", "muted", wrap=True)
         client.addWidget(self.pair_error)
-        self.pair_submit = button("Pair and connect", self._pair_client, primary=True)
-        client.addWidget(self.pair_submit)
+        self.pair_submit = button("Connect", self._pair_client, primary=True)
+        connect_row = QHBoxLayout()
+        connect_row.addStretch(1)
+        connect_row.addWidget(self.pair_submit)
+        client.addLayout(connect_row)
         layout.addWidget(self.client_pair, 1)
         return page
 
@@ -502,8 +526,19 @@ class Window(QMainWindow):
         self.repair_button.setVisible(server and sys.platform == "win32")
         self.setup_note.setVisible(server and sys.platform == "win32")
         self.peer_label.setText("PAIRED CLIENT" if server else "PAIRED SERVER")
+        for widget in (self.peer_gap, self.peer_label, self.peer_name, self.addresses):
+            widget.setVisible(server)
+        self.saved_box.setVisible(not server)
+        self._refresh_saved_servers()
         self._update_peer()
         self._update_actions()
+        paired = (
+            self.preferences.get("game_credentials")
+            if server
+            else self.preferences.get("controller_profile")
+        )
+        if not paired:
+            self._show_pair_page()
         if hasattr(self, "settings"):
             self._fit_page()
 
@@ -518,15 +553,12 @@ class Window(QMainWindow):
         height = (
             450
             if mode_selection
-            else (
-                (570 if self.current_role == "controller" else 430)
-                if pairing
-                else (440 if self.current_role == "controller" else 404)
-            )
+            else (460 if pairing else (500 if self.current_role == "controller" else 404))
         )
         self.setMinimumHeight(height)
         self.resize(
-            max(640, self.minimumSizeHint().width()), max(height, self.minimumSizeHint().height())
+            max(640, self.minimumSizeHint().width()),
+            max(height, self.minimumSizeHint().height() + 8),
         )
 
     def _update_peer(self):
@@ -546,23 +578,32 @@ class Window(QMainWindow):
             if server
             else self.preferences.get("controller_profile")
         )
-        self.connect_button.setText(
-            ("Stop server" if active else "Start server")
-            if server
-            else ("Disconnect" if active else "Connect")
-        )
+        self.connect_button.setText("Disconnect" if active else "Connect")
         if not paired:
             self.connect_button.setText("Pair client" if server else "Pair server")
         self._tone(self.connect_button, "danger" if active and paired else "positive", "intent")
-        self.pair_button.setText("Pair client" if server else "Change server")
-        self.pair_button.setVisible(paired)
+        self.pair_button.setText("Pair another client")
+        self.pair_button.setVisible(bool(paired) and server)
         for control in (
             self.connect_button,
             self.pair_button,
             self.generate,
             self.pair_submit,
+            self.pair_back,
         ):
             control.setEnabled(not self.busy)
+        self.pair_submit.setText("Connecting…" if self.pairing_client else "Connect")
+        self.pair_button.setEnabled(not self.busy and not self.connected)
+        self.pair_button.setToolTip(
+            "Disconnect before pairing another client" if self.connected else ""
+        )
+        for control in (self.saved_list, self.add_server, self.remove_server):
+            control.setEnabled(not self.busy and not self.engine.connection)
+            control.setToolTip(
+                "Disconnect before changing servers" if self.engine.connection else ""
+            )
+        if not self.saved_list.currentItem():
+            self.remove_server.setEnabled(False)
         locked = bool(self.engine.connection) or self.busy
         was_locked = self.audio.property("locked")
         self.audio.setLocked(locked)
@@ -571,7 +612,7 @@ class Window(QMainWindow):
         mode_locked = active or self.busy
         self.mode_button.setEnabled(not mode_locked)
         self.mode_button.setToolTip(
-            ("Stop server to change mode" if server else "Disconnect to change mode")
+            "Disconnect to change mode"
             if active
             else "Wait for the current action to finish"
             if self.busy
@@ -602,37 +643,77 @@ class Window(QMainWindow):
         self._show_role()
         self._perform(self.engine.set_role(role))
 
-    def _open_pairing(self):
+    def _show_pair_page(self):
         server = self.current_role == "game"
-        self.pair_heading.setText("Pair a client" if server else "Connect to a server")
+        self.pair_heading.setText("Connect a client" if server else "Add a server")
         self.pair_instructions.setText(
-            "On the Client, select this server and enter the code below."
+            "Enter this code in the Client app on your controller computer."
             if server
-            else "Open DSShine on your Windows PC and generate a pairing code."
+            else "Enter your gaming PC's address and the code shown in its Server app."
         )
         self.server_pair.setVisible(server)
         self.client_pair.setVisible(not server)
+        self.pair_back.setVisible(
+            bool(
+                self.preferences.get("game_credentials")
+                if server
+                else self.preferences.get("controller_profile")
+            )
+        )
+        if server:
+            vpn = []
+            for address in QNetworkInterface.allAddresses():
+                value = address.toString()
+                try:
+                    if ipaddress.ip_address(value) in ipaddress.ip_network("100.64.0.0/10"):
+                        vpn.append(value)
+                except ValueError:
+                    pass
+            lines = ["LAN: " + ", ".join(local_addresses())]
+            if vpn:
+                lines.append("VPN: " + ", ".join(sorted(set(vpn))))
+            self.pair_addresses.setText("\n".join(lines))
         self.pages.setCurrentWidget(self.pair_page)
         self._fit_page()
+
+    def _open_pairing(self):
+        if self.engine.connection or self.connected:
+            return
+        self._show_pair_page()
         self.pair_error.clear()
-        if not server:
-            self._perform(self.engine.rescan())
+        if self.current_role == "game":
+            if not self.engine.pairing:
+                self._generate_code()
+        else:
+            self.code.clear()
+            self.manual_address.setFocus()
+            self.manual_address.selectAll()
+            self.engine.submit(self.engine.rescan())
 
     def _back(self):
+        server_pairing = (
+            self.current_role == "game" and self.pages.currentWidget() is self.pair_page
+        )
         self.pages.setCurrentWidget(self.connection_page)
+        if server_pairing and self.engine.pairing:
+            self._perform(self.engine.cancel_pairing())
 
     def _generate_code(self):
-        self.pin_hint.setText("Creating a code… This disconnects the current client.")
+        self.pin.setText("••••")
+        self.copy_code.setEnabled(False)
+        self.pin_hint.setText("Creating a pairing code…")
         self._perform(self.engine.begin_pairing())
 
-    def _toggle_manual(self):
-        manual = self.server_choices.currentIndex() == 0
-        self.server_choices.setCurrentIndex(1 if manual else 0)
-        self.manual_toggle.setText("Use discovery" if manual else "Enter address")
-        if manual:
-            self.manual_address.setFocus()
+    def _choose_discovered(self, item):
+        computer = item.data(Qt.ItemDataRole.UserRole)
+        if computer:
+            self.manual_address.setText(computer["address"])
+            self._remember_address()
+            self.code.setFocus()
 
     def _remember_address(self):
+        if self.quitting or self.closing:
+            return
         address = self.manual_address.text().strip()
         if address:
             self.engine.submit(self.engine.update_preferences("game_address", address))
@@ -653,22 +734,45 @@ class Window(QMainWindow):
             self.hosts.addItem(item)
             if pc["id"] == selected:
                 self.hosts.setCurrentItem(item)
-        if not self.hosts.currentItem() and self.hosts.count():
-            self.hosts.setCurrentRow(0)
-        if not self.hosts.count():
-            item = QListWidgetItem("Searching for servers…\nCheck that DSShine is open on Windows.")
-            item.setFlags(Qt.ItemFlag.NoItemFlags)
-            item.setSizeHint(QSize(0, 60))
-            self.hosts.addItem(item)
+        self.hosts.setVisible(bool(self.hosts.count()))
+        self.discovery_hint.setVisible(not self.hosts.count())
+        self._fit_page()
+
+    def _refresh_saved_servers(self):
+        servers = dict(saved_servers.migrate(self.preferences))
+        self.saved_list.blockSignals(True)
+        self.saved_list.clear()
+        for identifier, profile in servers.items():
+            status = self.server_states.get(identifier, "checking")
+            if self.connected and identifier == self.preferences.get("selected_server"):
+                status = "online"
+            word = {"online": "Online", "offline": "Offline", "checking": "Checking…"}[status]
+            item = QListWidgetItem(
+                profile.get("name", "Gaming PC") + "  ·  " + word + "\n" + profile["address"]
+            )
+            item.setData(Qt.ItemDataRole.UserRole, identifier)
+            item.setSizeHint(QSize(0, 54))
+            item.setForeground(QColor("#64b5ff" if status == "online" else "#a1a5ad"))
+            self.saved_list.addItem(item)
+            if identifier == self.preferences.get("selected_server"):
+                self.saved_list.setCurrentItem(item)
+        self.saved_list.blockSignals(False)
+        self.saved_list.setFixedHeight(54 * max(1, min(2, len(servers))) + 8)
+
+    def _select_saved_server(self, item, previous=None):
+        if item:
+            identifier = item.data(Qt.ItemDataRole.UserRole)
+            if identifier != self.preferences.get("selected_server"):
+                self._perform(self.engine.select_server(identifier))
+
+    def _forget_server(self):
+        item = self.saved_list.currentItem()
+        if item:
+            self._perform(self.engine.forget_server(item.data(Qt.ItemDataRole.UserRole)))
 
     def _pair_client(self):
         self._tone(self.pair_error, "danger")
-        if self.server_choices.currentIndex() == 1:
-            address = self.manual_address.text().strip()
-        else:
-            item = self.hosts.currentItem()
-            pc = item.data(Qt.ItemDataRole.UserRole) if item else None
-            address = pc["address"] if pc else ""
+        address = self.manual_address.text().strip()
         if not address:
             self.pair_error.setText("Select a server, or enter its address.")
             return
@@ -678,9 +782,11 @@ class Window(QMainWindow):
             self.code.setFocus()
             return
         self.engine.submit(self.engine.update_preferences("game_address", address))
-        self.pair_error.setText("Pairing with server…")
+        self.pairing_client = True
+        self.pair_error.setText("Connecting to Server…")
         self._tone(self.pair_error, "info")
-        self._perform(self.engine.pair(address, code))
+        manual = not any(pc["address"] == address for pc in self.computers.values())
+        self._perform(self.engine.pair(address, code, manual=manual))
 
     def _toggle(self):
         paired = (
@@ -706,6 +812,7 @@ class Window(QMainWindow):
     def _auto_connect(self):
         if (
             not self.busy
+            and self.pages.currentWidget() is self.connection_page
             and not self.engine.connection
             and self.current_role == "controller"
             and self.auto.isChecked()
@@ -790,13 +897,25 @@ class Window(QMainWindow):
             for text in ("route", "Connect call failed", "refused", "10060", "timed out")
         ):
             return (
-                "Server is unreachable. Check that DSShine is open and network access is allowed."
+                "Server unreachable. Check its address, VPN and Windows firewall, then try again."
             )
         if "10048" in message or "Address already in use" in message:
             return "Another DSShine copy is using the connection. Quit it and try again."
         return message if len(message) <= 160 else "Connection failed. Open Logs for details."
 
     def on_event(self, kind, value):
+        if kind == "server_status":
+            self.server_states[value["id"]] = value["status"]
+            self._refresh_saved_servers()
+            return
+        if kind == "servers_changed":
+            self._show_role()
+            self.engine.submit(self.engine.refresh_server_status())
+            return
+        if kind == "client_ready":
+            if not self.preferences.get("controller_profile"):
+                self._open_pairing()
+            return
         if kind == "computer":
             self.computers[value["id"]] = value
             self._refresh_computers()
@@ -808,19 +927,21 @@ class Window(QMainWindow):
             return
         if kind == "idle":
             self.busy = False
+            self.pairing_client = False
             self._update_actions()
             return
         if kind == "pair_code":
+            self._show_pair_page()
             self.pin.setText(value if value else "Code expired")
             self.copy_code.setEnabled(bool(value))
             if value:
                 self._copy_code()
             self.pin_hint.setText(
-                "Copied to clipboard. Expires in 2 minutes."
+                "Copied to clipboard. Valid for 2 minutes."
                 if value
                 else "Generate a new code to continue pairing."
             )
-            self.generate.setText("Generate a new code")
+            self.generate.setText("New code")
             self._tone(self.pin, "info" if value else "danger")
             return  # Pairing codes are never written to logs.
         if kind == "audio_status":
@@ -831,6 +952,8 @@ class Window(QMainWindow):
             self._tone(self.audio_status, "danger" if stalled else "info")
             return
         message = str(value or "")
+        if kind == "error" and not message.strip():
+            message = "The request timed out. Check the server address, VPN and firewall."
         self.details.appendPlainText(
             datetime.now().strftime("%H:%M:%S") + "  " + kind + ": " + message
         )
@@ -845,6 +968,7 @@ class Window(QMainWindow):
             self._back()
             return
         if kind == "error":
+            self.pairing_client = False
             self._tone(self.pair_error, "danger")
             self.status.setText(self._error_heading(message))
             self.description.setText(self._friendly_error(message))
@@ -856,7 +980,8 @@ class Window(QMainWindow):
         elif kind == "paired":
             self.pin.clear()
             self.code.clear()
-            self._back()
+            self.pages.setCurrentWidget(self.connection_page)
+            self._show_role()
             self.status.setText("Paired")
             self.description.setText("Connecting your controller…")
         elif kind == "connected":
@@ -875,10 +1000,8 @@ class Window(QMainWindow):
             self.description.setText("Press PS to reconnect your DualSense to this Client.")
         elif kind == "reconnecting":
             self.connected = False
-            self.status.setText("Reconnecting…")
-            self.description.setText(
-                "Looking for your Server. Keep DSShine open on both computers."
-            )
+            self.status.setText("Server unreachable")
+            self.description.setText(self._friendly_error(message) + " Retrying automatically…")
         elif kind == "waiting":
             self.connected = False
             paired = bool(self.preferences.get("game_credentials"))
@@ -913,7 +1036,7 @@ class Window(QMainWindow):
             self.audio_status.hide()
         tone = (
             "danger"
-            if kind in ("error", "controller_waiting", "stopped")
+            if kind in ("error", "controller_waiting", "stopped", "reconnecting")
             else "success"
             if kind in ("connected", "paired")
             else "warning"
@@ -940,6 +1063,7 @@ class Window(QMainWindow):
     def quit(self):
         if self.quitting or self.closing:
             return
+        self.closing = True
         self.retry.stop()
         self.status.setText("Disconnecting…")
         self.busy = True

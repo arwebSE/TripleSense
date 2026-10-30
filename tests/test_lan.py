@@ -73,6 +73,9 @@ class LanTests(unittest.TestCase):
             self.assertEqual(config.read_text(), original)
             self.assertEqual(list(config.parent.iterdir()), [config])
             self.assertEqual(run.call_count, 4)  # Only DSShine's two firewall rules.
+            additions = [call.args[0] for call in run.call_args_list if "add" in call.args[0]]
+            self.assertIn("remoteip=localsubnet,100.64.0.0/10", additions[0])
+            self.assertIn("remoteip=localsubnet", additions[1])
 
 
 class RoamingTests(unittest.IsolatedAsyncioTestCase):
@@ -100,6 +103,12 @@ class RoamingTests(unittest.IsolatedAsyncioTestCase):
     async def test_another_game_pc_cannot_replace_the_saved_address(self):
         await self.engine.discovered({"host_id": "other-id", "address": "192.168.1.20"})
         self.assertEqual(self.engine.preferences["controller_profile"]["address"], "192.168.1.10")
+
+    async def test_discovery_does_not_replace_manual_vpn_address(self):
+        profile = self.engine.preferences["controller_profile"]
+        profile.update(address="100.97.43.25", manual_address=True)
+        await self.engine.discovered({"host_id": "paired-id", "address": "192.168.1.190"})
+        self.assertEqual(profile["address"], "100.97.43.25")
 
     async def test_legacy_pair_does_not_adopt_id_when_tls_verification_fails(self):
         self.engine.preferences["controller_profile"].pop("host_id")

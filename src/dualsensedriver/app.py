@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
+from . import saved_servers
 from .app_support import (
     Discovery,
     app_directory,
@@ -47,6 +48,8 @@ class AppEngine:
         self.operation = asyncio.Lock()
         self.receiver = self.connection = self.pairing = self.expiry = None
         self.discovery = None
+        self.probe_task = None
+        saved_servers.migrate(self.preferences)
 
     def _run(self):
         asyncio.set_event_loop(self.loop)
@@ -64,7 +67,12 @@ class AppEngine:
             except concurrent.futures.CancelledError:
                 pass
             except Exception as exc:
-                self.notify("error", str(exc))
+                message = str(exc).strip() or (
+                    "The request timed out. Check the server address, VPN and firewall."
+                    if isinstance(exc, TimeoutError)
+                    else "The request failed. Open Logs for details."
+                )
+                self.notify("error", message)
             finally:
                 if busy:
                     self.notify("idle", None)
@@ -85,6 +93,7 @@ class AppEngine:
         await self.set_role(
             self.preferences.get("role", "game") if sys.platform == "win32" else "controller"
         )
+        self.probe_task = asyncio.create_task(self._watch_servers())
 
     def save(self):
         save_preferences(self.root, self.preferences)
@@ -123,7 +132,12 @@ class AppEngine:
                 else:
                     await asyncio.to_thread(self.discovery.withdraw)
             if role == "game":
-                await self._start_game()
+                if self.preferences.get("game_credentials"):
+                    await self._start_game()
+                else:
+                    await self._create_pairing_offer()
+            else:
+                self.notify("client_ready", None)
 
     async def _start_game(self):
         if sys.platform != "win32":
@@ -147,38 +161,91 @@ class AppEngine:
     async def begin_pairing(self):
         async with self.operation:
             await self._stop()
+            await self._create_pairing_offer()
 
-            async def accepted(credentials, name):
-                self.preferences["game_credentials"] = str(credentials)
-                self.preferences["controller_name"] = name
-                self.save()
+    async def _create_pairing_offer(self):
+        async def accepted(credentials, name):
+            self.preferences["game_credentials"] = str(credentials)
+            self.preferences["controller_name"] = name
+            self.save()
+            await self._start_game()
+            self.notify("paired", name)
+
+        self.pairing = PairingOffer(
+            self.root / "identities", accepted, host_id=self.preferences["computer_id"]
+        )
+        await self.pairing.start()
+        self.notify("pair_code", self.pairing.code)
+
+        async def expire():
+            await asyncio.sleep(120)
+            if self.pairing:
+                await self.pairing.stop()
+                self.pairing = None
+            self.notify("pair_code", "")
+
+        self.expiry = asyncio.create_task(expire())
+
+    async def cancel_pairing(self):
+        async with self.operation:
+            await self._stop()
+            if self.preferences.get("game_credentials"):
                 await self._start_game()
-                self.notify("paired", name)
 
-            self.pairing = PairingOffer(
-                self.root / "identities", accepted, host_id=self.preferences["computer_id"]
-            )
-            await self.pairing.start()
-            self.notify("pair_code", self.pairing.code)
-
-            async def expire():
-                await asyncio.sleep(120)
-                if self.pairing:
-                    await self.pairing.stop()
-                    self.pairing = None
-                self.notify("pair_code", "")
-
-            self.expiry = asyncio.create_task(expire())
-
-    async def pair(self, address, code):
+    async def pair(self, address, code, *, manual=False):
         async with self.operation:
             if self.connection:
                 await self._stop()
-            profile = await pair_controller(address, code, self.root / "identities")
-            self.preferences["controller_profile"] = profile
+            try:
+                async with asyncio.timeout(15):
+                    profile = await pair_controller(address, code, self.root / "identities")
+            except TimeoutError as exc:
+                raise TimeoutError(
+                    str(exc) or "Pairing timed out. Check your address and VPN."
+                ) from exc
+            profile["manual_address"] = manual
+            saved_servers.remember(self.preferences, profile)
             self.save()
+            self.notify("servers_changed", None)
             self.notify("paired", profile["name"])
         await self.connect()
+
+    async def select_server(self, identifier):
+        async with self.operation:
+            if self.connection and identifier != self.preferences.get("selected_server"):
+                raise RuntimeError("Disconnect before selecting another server")
+            saved_servers.select(self.preferences, identifier)
+            self.save()
+            self.notify("servers_changed", None)
+
+    async def forget_server(self, identifier):
+        async with self.operation:
+            if self.connection:
+                raise RuntimeError("Disconnect before removing a server")
+            saved_servers.forget(self.preferences, identifier, self.root)
+            self.save()
+            self.notify("servers_changed", None)
+
+    async def refresh_server_status(self):
+        semaphore = asyncio.Semaphore(3)
+
+        async def check(identifier, profile):
+            async with semaphore:
+                status = await saved_servers.probe(profile)
+                self.notify("server_status", {"id": identifier, "status": status})
+
+        await asyncio.gather(
+            *(
+                check(key, dict(value))
+                for key, value in dict(self.preferences.get("servers", {})).items()
+            )
+        )
+
+    async def _watch_servers(self):
+        while True:
+            if self.preferences.get("role") == "controller":
+                await self.refresh_server_status()
+            await asyncio.sleep(5)
 
     async def connect(self):
         async with self.operation:
@@ -243,6 +310,7 @@ class AppEngine:
             and profile.get("host_id")
             and profile["host_id"] == computer.get("host_id")
             and profile["address"] != computer["address"]
+            and not profile.get("manual_address")
         ):
             # Discovery changes the destination, never the pinned TLS identity.
             profile["address"] = computer["address"]
@@ -261,6 +329,10 @@ class AppEngine:
             self.save()
 
     async def shutdown(self):
+        if self.probe_task:
+            self.probe_task.cancel()
+            await asyncio.gather(self.probe_task, return_exceptions=True)
+            self.probe_task = None
         await self.stop()
         if self.discovery:
             await asyncio.to_thread(self.discovery.close)
@@ -283,11 +355,13 @@ def main(argv=None):
     if sys.platform == "win32":
         import ctypes
 
+        from .windows_taskbar import application_id
+
         # Keep the taskbar separate from Python and match the installer shortcuts.
         identify = ctypes.OleDLL("shell32").SetCurrentProcessExplicitAppUserModelID
         identify.argtypes = [ctypes.c_wchar_p]
         identify.restype = ctypes.c_long
-        result = identify("DSShine.Desktop")
+        result = identify(application_id())
         if result < 0:
             raise OSError(f"Could not set the Windows app identity: {result:#x}")
     if args.repair_setup:
@@ -353,6 +427,10 @@ def main(argv=None):
     if sys.platform == "darwin":
         importlib.import_module("hid")
     window = Window(root, smoke_test=bool(args.smoke_test))
+    if sys.platform == "win32":
+        from .windows_taskbar import set_window_identity
+
+        set_window_identity(int(window.winId()))
     server = QLocalServer()
     server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
     QLocalServer.removeServer(endpoint)
@@ -387,7 +465,8 @@ def main(argv=None):
             except (OSError, RuntimeError) as exc:
                 window.on_event("error", "Could not enable automatic startup: " + str(exc))
     # Accept the legacy flag so existing login entries still open a visible app.
-    window.show()
+    if not args.smoke_test:
+        window.show()
     if args.smoke_test:
 
         def smoke():
@@ -399,6 +478,9 @@ def main(argv=None):
                 )
                 metadata["windows_app_id"] = identity.value
                 ctypes.windll.ole32.CoTaskMemFree(identity)
+                from .windows_taskbar import read_window_identity
+
+                metadata["window_shell"] = read_window_identity(int(window.winId()))
             args.smoke_test.with_suffix(".json").write_text(json.dumps(metadata))
             window.grab().save(str(args.smoke_test))
             window.quit()
