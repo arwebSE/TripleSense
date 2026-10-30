@@ -666,7 +666,11 @@ class Window(QMainWindow):
             self.connect_button.setText("Cancel")
         if not paired and not server:
             self.connect_button.setText("Pair server")
-        self._tone(self.connect_button, "danger" if active else "positive", "intent")
+        self._tone(
+            self.connect_button,
+            "danger" if active or self.starting_connection else "positive",
+            "intent",
+        )
         self.pair_button.setText("Pair another client")
         self.pair_button.setVisible(False)
         for control in (
