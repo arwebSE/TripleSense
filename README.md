@@ -1,49 +1,61 @@
 # DSShine
 
-Use a DualSense connected to your Mac with games on your Windows PC.
-DSShine carries the controller connection independently of your streaming software.
-It uses the free signed USB/IP driver and does not require a streaming app or fork.
+Use the DualSense connected to your Mac to play games on your Windows PC.
+DSShine sends the controller connection between the two computers, including
+adaptive triggers, vibration and touchpad input.
 
-## Install
+Use it alongside your preferred game-streaming app. Sunshine and Moonlight
+are our tested setup, but are not required by DSShine.
 
-- **Windows:** run the DSShine installer. It includes the controller driver and
-  configures local-network access. It does not change your streaming software.
-- **Mac:** open the DSShine disk image and drag the app into Applications.
-  Open it and allow local-network access when macOS asks.
-- In the Windows **Server** app, click **Pair client**, then **Generate code**.
-  In the Mac **Client** app, click **Pair server**, select the server and enter
-  the code. Turn on your Bluetooth DualSense.
+**[Download DSShine](https://github.com/arwebSE/DSShine/releases)** ·
+[Setup and troubleshooting](docs/STANDALONE.md)
 
-After pairing, DSShine reconnects automatically and opens at login. Closing its
-window disconnects the controller and quits the app. Minimize it to keep it
-running. Use your preferred streaming app for video and ordinary game sound;
-disable its controller forwarding if it creates duplicate input. No terminal,
-SSH, Python or certificate setup is required.
+> **Preview release:** controller input and adaptive triggers have been tested.
+> Controller speaker, microphone and detailed audio haptics are still experimental;
+> Bluetooth audio can drop out. Other streaming apps have not yet been tested.
 
-[Setup and troubleshooting](docs/STANDALONE.md) ·
-[Downloads](https://github.com/arwebSE/DSShine/releases)
+## What you need
 
-## Current status
+- A Windows gaming PC (64-bit).
+- An Apple Silicon Mac and a DualSense connected to it over Bluetooth.
+- Both computers on the same local network.
 
-**Development preview.** The installed Windows/Mac apps have passed live pairing,
-native DualSense enumeration, input and adaptive-trigger feedback/release checks.
-Vibration and touchpad input were confirmed in the earlier browser test.
+You do **not** need Python, SSH, a terminal or developer tools. Everything needed
+by the apps is included; Windows asks for administrator permission to install
+the controller driver. macOS and Linux gaming-PC support is planned.
 
-Controller speaker, microphone and full audio-driven haptics are requirements.
-Their transport exists, but Mac Bluetooth audio currently stalls and drops out;
-it is not a completed feature. The app exposes the audio switch and reports
-streaming stalls. Controller audio is on by default and can be switched off.
+## Get connected
 
-The Mac preview is locally signed and not Apple notarized. macOS may require
-Open Anyway for a downloaded build. No game-specific or long-session quality
-claim is made. See [validation evidence](docs/VALIDATION.md).
+1. **On Windows:** download and run the Windows installer, then open DSShine
+   in **Server** mode.
+2. **On your Mac:** download the Mac disk image, drag DSShine into Applications
+   and open it. Allow Bluetooth and local-network access when asked.
+3. **On Windows:** click **Pair client**, then **Generate code**.
+4. **On your Mac:** click **Pair server**, select your Windows PC, enter its
+   four-digit code and click **Pair and connect**.
+5. Turn on your DualSense and start your game or stream.
 
-## Development
+Pairing is saved, so you only need the code once. New codes copy automatically;
+**Copy code** copies the displayed code again.
 
-[Upstream comparison](docs/UPSTREAM.md) · [Architecture](docs/ARCHITECTURE.md) · [Developer tools and CLI](docs/DEVELOPMENT.md)
-· [Planned platform support](docs/ROADMAP.md)
+If your streaming app also forwards controllers, disable that feature if it
+causes duplicate input. DSShine does not change your streaming app's settings.
 
-The bridge builds on the MIT-licensed
-[ds5-virtual-cable](https://github.com/Macle57/ds5-virtual-cable), pinned under
-`vendor/`, and [usbip-win2](https://github.com/vadimgrn/usbip-win2).
-Dependency and distribution licenses are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+## Everyday use
+
+Open DSShine on both computers and turn on your controller. It reconnects
+automatically. Minimize the window to keep playing; closing it disconnects the
+controller and quits the app.
+
+Controller audio is enabled by default. If it causes dropouts, disconnect,
+uncheck **Controller audio**, then connect again. Ordinary game sound through
+your streaming app is separate.
+
+If macOS blocks the downloaded preview, see
+[Apple's instructions for opening it](https://support.apple.com/en-gb/102445).
+For connection problems, see [setup and troubleshooting](docs/STANDALONE.md).
+
+---
+
+For contributors: [development guide](docs/DEVELOPMENT.md) ·
+[credits and upstream project](docs/UPSTREAM.md)

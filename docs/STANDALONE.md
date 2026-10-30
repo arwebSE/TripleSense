@@ -126,21 +126,4 @@ there is no dropdown. Settings and Logs open in separate windows. The connection
 and pairing screens do not scroll; only the server list and log contents can scroll.
 Those scrollbars use the platform's native widget style.
 
-## Building
-
-Build on the target platform with Python 3.11+:
-
-```text
-python -m pip install -e ".[controller,app,build]"
-python tools/build_app.py
-```
-
-On Windows, first run `scripts/Install-HostDriver.ps1` without `-Install` to
-download and verify the pinned driver installer. Install Inno Setup 6 and use
-`python tools/build_app.py --installer` to create the setup executable. Neither
-Python nor Inno Setup is needed on users' computers.
-
-The app bundle includes dependency licenses. Shared Qt libraries remain
-replaceable. Developer ID signing and notarization require release credentials
-and are not simulated by the build. GitHub Actions builds downloadable desktop
-artifacts with the **Build desktop app** workflow.
+For building or contributing, see the [development guide](DEVELOPMENT.md).

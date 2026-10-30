@@ -1,4 +1,11 @@
-# DSShine
+# DSShine development
+
+This guide is for contributors. For installation and everyday use, start with
+[the user README](../README.md).
+
+[Architecture](ARCHITECTURE.md) · [Upstream comparison](UPSTREAM.md) ·
+[Platform roadmap](ROADMAP.md) · [Validation evidence](VALIDATION.md) ·
+[Third-party notices](../THIRD_PARTY_NOTICES.md)
 
 A streaming-independent Windows DualSense device bridge, targeting native
 controller input, adaptive triggers, and the audio path used for detailed haptics.
@@ -140,4 +147,23 @@ Transport tests cover certificate rejection, native identity/input, exact
 adaptive-trigger bytes, four-channel PCM, single importer ownership and release
 on disconnect. They do not establish game or physical-effect compatibility.
 Hardware captures and credentials are ignored by Git. See
-[architecture](ARCHITECTURE.md) and [attribution](THIRD_PARTY_NOTICES.md).
+[architecture](ARCHITECTURE.md) and [attribution](../THIRD_PARTY_NOTICES.md).
+
+## Building the desktop apps
+
+Build on the target platform with Python 3.11+:
+
+```text
+python -m pip install -e ".[controller,app,build]"
+python tools/build_app.py
+```
+
+On Windows, first run `scripts/Install-HostDriver.ps1` without `-Install` to
+download and verify the pinned driver installer. Install Inno Setup 6 and use
+`python tools/build_app.py --installer` to create the setup executable. Neither
+Python nor Inno Setup is needed on users' computers.
+
+The app bundle includes dependency licenses. Shared Qt libraries remain
+replaceable. Developer ID signing and notarization require release credentials
+and are not simulated by the build. GitHub Actions builds downloadable desktop
+artifacts with the **Build desktop app** workflow.
