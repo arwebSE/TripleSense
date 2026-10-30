@@ -332,6 +332,11 @@ class Window(QMainWindow):
         self.hosts.setEditable(True)
         self.hosts.setPlaceholderText("Finding PCs… or enter an address")
         self.hosts.lineEdit().setPlaceholderText("Finding PCs… or enter an address")
+        self.hosts.setEditText(
+            self.preferences.get("game_address")
+            or self.preferences.get("controller_profile", {}).get("address", "")
+        )
+        self.hosts.lineEdit().editingFinished.connect(self._remember_address)
         controller.addWidget(self.hosts)
         self.client_pair = QPushButton("Pair with this PC")
         self.client_pair.clicked.connect(self._pair_client)
@@ -483,6 +488,7 @@ class Window(QMainWindow):
         if not address:
             self.description.setText("Select a game PC, or enter its address.")
             return
+        self.engine.submit(self.engine.update_preferences("game_address", address))
         code, accepted = QInputDialog.getText(
             self,
             "Pair with game PC",
@@ -492,6 +498,32 @@ class Window(QMainWindow):
         if accepted:
             self.status.setText("Pairing")
             self._perform(self.engine.pair(address, code))
+
+    def _remember_address(self):
+        # A manually entered address should survive a restart before pairing.
+        address = self.hosts.currentText().strip()
+        if address and self.hosts.findText(address) < 0:
+            self.engine.submit(self.engine.update_preferences("game_address", address))
+
+    def _refresh_computers(self):
+        selected = self.hosts.currentText()
+        self.hosts.blockSignals(True)
+        self.hosts.clear()
+        # Prefer a running DSShine app over a plain Sunshine advertisement.
+        by_address = {}
+        for pc in sorted(self.computers.values(), key=lambda item: item["dsshine"]):
+            by_address[pc["address"]] = pc
+        for pc in by_address.values():
+            suffix = "" if pc["dsshine"] else " · open DSShine on this PC"
+            self.hosts.addItem(pc["name"] + suffix, pc)
+        if selected:
+            index = self.hosts.findText(selected)
+            if index >= 0:
+                self.hosts.setCurrentIndex(index)
+            else:
+                self.hosts.setCurrentIndex(-1)
+                self.hosts.setEditText(selected)
+        self.hosts.blockSignals(False)
 
     def _install_driver(self):
         try:
@@ -508,22 +540,11 @@ class Window(QMainWindow):
     def on_event(self, kind, value):
         if kind == "computer":
             self.computers[value["id"]] = value
-            selected = self.hosts.currentText()
-            self.hosts.blockSignals(True)
-            self.hosts.clear()
-            # Prefer a running DSShine app over a plain Sunshine advertisement.
-            by_address = {}
-            for pc in sorted(self.computers.values(), key=lambda item: item["dsshine"]):
-                by_address[pc["address"]] = pc
-            for pc in by_address.values():
-                suffix = "" if pc["dsshine"] else " · open DSShine on this PC"
-                self.hosts.addItem(pc["name"] + suffix, pc)
-            if selected and self.hosts.findText(selected) >= 0:
-                self.hosts.setCurrentText(selected)
-            self.hosts.blockSignals(False)
+            self._refresh_computers()
             return
         if kind == "computer_removed":
             self.computers.pop(value, None)
+            self._refresh_computers()
             return
         if kind == "idle":
             self.busy = False

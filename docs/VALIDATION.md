@@ -90,11 +90,20 @@ the reverse connection, release on disconnect, crash-record validation, failed
 cleanup retry, and cancellation during attachment. Audio opt-in tests verify
 that the default app path does not arm microphone capture or queue PCM.
 
-Real desktop-app LAN pairing and the new packaged Mac Bluetooth source still
-need live acceptance. The Mac reported local-network failures during initial
-discovery; allowing the app in macOS Local Network settings is part of the
-pending user check. Earlier two-PC hardware and browser results remain valid
-for the prior CLI/SSH transport and do not by themselves validate this new path.
+Live PIN pairing succeeded between the installed Windows and Mac apps. Windows
+imported one native 054C:0CE6 controller from the Mac Bluetooth source. A live
+check received 1,000 input reports in 4.058 seconds, including 265 distinct
+physical motion timestamps. Physical trigger status changed to 0x11 for feedback
+and returned to zero after the release report. These checks do not establish
+game-specific haptics quality, controller audio, or long-session stability.
+
+The first pairing attempt was blocked because Windows Ethernet used the Public
+profile while the installer created Private-only firewall rules. After extending
+the two app-specific, local-subnet rules to Public as well, a Mac TCP probe and
+real app pairing succeeded. The installer now includes that fix. Discovery was
+still unreliable in the user's app; manual IP entry worked. The address field
+now retains manual text across discovery updates and restores a saved address
+or the paired profile's address when the app opens.
 
 ## Acceptance procedure
 

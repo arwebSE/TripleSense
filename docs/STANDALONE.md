@@ -8,7 +8,7 @@ and mouse. No paid virtual-controller driver or Sunshine fork is required.
 ## First setup
 
 1. **Windows:** run `DSShine-Setup-0.2.0-Windows-x64.exe`. The installer includes
-   the signed USB/IP driver, adds app-specific Private-network firewall rules,
+   the signed USB/IP driver, adds app-specific local-subnet firewall rules,
    and offers to disable Sunshine controller forwarding. It backs up the
    Sunshine setting and does not restart Windows or Sunshine automatically.
    Restart Sunshine after changing its controller setting.
@@ -68,7 +68,7 @@ The underlying USB/IP listener is bound only to Windows loopback.
 
 The normal connection uses TCP 3250. The pairing listener uses TCP 3251 only
 while a code is active; discovery uses mDNS. Installer firewall exceptions are
-restricted to the DSShine executable, Private networks and the local subnet.
+restricted to the DSShine executable, the local subnet on Private and Public networks.
 Both computers must be reachable on the same LAN. Router client isolation,
 multicast filtering or a Public Windows network profile can prevent discovery
 or connection; entering the game PC's LAN address bypasses discovery only.

@@ -39,8 +39,8 @@ Name: "{autodesktop}\DSShine"; Filename: "{app}\DSShine.exe"; Tasks: desktopicon
 Filename: "{app}\_internal\installers\USBip-0.9.8.1-x64.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"; StatusMsg: "Installing the controller driver…"; Check: NeedsControllerDriver; Flags: waituntilterminated
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""DSShine - Controller"""; Flags: runhidden
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""DSShine - Discovery"""; Flags: runhidden
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""DSShine - Controller"" dir=in action=allow program=""{app}\DSShine.exe"" protocol=TCP localport=3250-3251 profile=private remoteip=localsubnet"; Flags: runhidden
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""DSShine - Discovery"" dir=in action=allow program=""{app}\DSShine.exe"" protocol=UDP localport=5353 profile=private remoteip=localsubnet"; Flags: runhidden
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""DSShine - Controller"" dir=in action=allow program=""{app}\DSShine.exe"" protocol=TCP localport=3250-3251 profile=private,public remoteip=localsubnet"; Flags: runhidden
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""DSShine - Discovery"" dir=in action=allow program=""{app}\DSShine.exe"" protocol=UDP localport=5353 profile=private,public remoteip=localsubnet"; Flags: runhidden
 Filename: "{app}\DSShine.exe"; Description: "Open DSShine"; Flags: postinstall nowait skipifsilent runasoriginaluser
 
 [UninstallRun]
