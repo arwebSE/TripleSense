@@ -23,5 +23,12 @@ and binary are not checked into this repository or the Python package. The
 host installer script downloads an exact upstream release and verifies its
 SHA-256 and Authenticode signature before running it.
 
+The standalone Windows desktop installer bundles that exact, unmodified signed
+usbip-win2 installer, with its BSD-2-Clause notice under `packaging/`. No driver
+source or binary is added to the Python source package. The desktop build also
+includes licenses for its runtime libraries, SPAKE2 (MIT), Zeroconf (LGPL),
+and dynamically linked Qt/PySide under the LGPL option. See
+`packaging/QT-LICENSES.md` and the generated bundle's `licenses/` directory.
+
 LibrePadPS5, ViGEmBus, Sunshine, Moonlight, libvirtualhid and libvirtualgamepad
 were reviewed as references; no source from those projects is included.

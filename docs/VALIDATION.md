@@ -76,6 +76,100 @@ The project suite currently contains 27 tests (the native scheduling test skips
 on Windows). The preceding Mac baseline ran 20 project and 331 inherited tests
 successfully (39 inherited native-AEC skips). Hardware records remain ignored.
 
+## Standalone desktop preview, 2026-10-30
+
+Windows x64 installer and macOS arm64 `.app` were built and launched from their
+bundles without a user-installed Python environment. Native window captures
+were inspected on both platforms. The Windows installer ran successfully,
+retained the existing USB/IP installation, created its Private/local-subnet
+firewall rules, and preserved the Sunshine controller setting backup.
+
+New integration tests exercise PIN pairing, wrong/expired/used codes, rejection
+of an unpaired TLS identity, native Sony USB identity and trigger payloads over
+the reverse connection, release on disconnect, crash-record validation, failed
+cleanup retry, and cancellation during attachment. Audio opt-in tests verify
+that the default app path does not arm microphone capture or queue PCM.
+
+Live PIN pairing succeeded between the installed Windows and Mac apps. Windows
+imported one native 054C:0CE6 controller from the Mac Bluetooth source. A live
+check received 1,000 input reports in 4.058 seconds, including 265 distinct
+physical motion timestamps. Physical trigger status changed to 0x11 for feedback
+and returned to zero after the release report. These checks do not establish
+game-specific haptics quality, controller audio, or long-session stability.
+
+The first pairing attempt was blocked because Windows Ethernet used the Public
+profile while the installer created Private-only firewall rules. After extending
+the two app-specific, local-subnet rules to Public as well, a Mac TCP probe and
+real app pairing succeeded. The installer now includes that fix. Discovery was
+still unreliable in the user's app; manual IP entry worked. The address field
+now retains manual text across discovery updates and restores a saved address
+or the paired profile's address when the app opens.
+
+## Installation and reconnection update, 2026-10-30
+
+The 0.3 desktop update installed successfully on Windows and macOS, preserved
+the existing pair and automatically reconnected. The Mac app received a stable
+discovery identity and adopted it only after checking the existing TLS identity.
+Launch-at-login registration was confirmed on both systems. The Windows
+installer created app-specific, local-subnet rules for TCP 3250–3251 and UDP
+5353/3252 on Private and Public profiles. The Mac disk image passed checksum
+verification. Fresh live input returned 1,000 reports in 3.997 seconds with 262
+distinct physical timestamps; physical trigger feedback/off readback was 0x11/0.
+
+The packaged Mac Bluetooth app, with audio explicitly enabled, delivered 73,920
+microphone samples with nonzero signal, -65.08 dBFS RMS and no Windows capture
+overflows during a short measurement. A quiet 1.5 kHz speaker tone produced a
+19.4 dB rise in the corresponding band at the physical controller microphone.
+Only scalar measurements were saved. This proves a speaker/microphone path for
+that trial; continuous Bluetooth output quality and native game haptics are
+still unverified.
+
+An app restart exposed a native macOS shutdown crash in hid_exit: the HID
+library had been initialized on an executor thread, which exited before its
+atexit cleanup on the main thread. Version 0.3.1 initializes it on the main
+thread before starting workers and joins executor cleanup before exiting.
+The installed 0.3.1 Mac app then passed three connected quit/reopen cycles with
+zero new native crash reports, preserving its pair and reconnecting afterward.
+
+The project suite has 45 tests (one native scheduling skip on Windows), including
+real UDP discovery without Bonjour, unsolicited-reply rejection, address roaming
+without replacing TLS credentials, TLS-gated legacy pair upgrades and idempotent
+Sunshine configuration. GUI/codec smoke checks run on packaged builds.
+
+## Server/Client interface redesign, 2026-10-30
+
+Version 0.4 replaces the form-style window with explicit Server/Client buttons,
+a connection view, and a separate pairing view. Settings and Logs are separate
+dialogs. The main window has no scroll container or dropdown. Only the discovered
+server list and log contents can scroll. The client pairing screen offers a
+server list and a separate manual-address panel, preserving the typed address
+when discovery updates.
+
+Windows and Mac renders were inspected for connected, disconnected, pairing,
+manual entry and settings states. The connection views now fit their contents
+at about 640×405 (Server) and 640×442 (Client), instead of expanding the status
+card to fill a tall window. Pairing can use a taller window, then returning to
+the connection view restores the compact size. Layout regression checks exercise
+both roles, including an error message, visible action bounds and separation
+between the server list and code input. Mode-switch tests stop a live receiver,
+select Client, verify the saved mode, and switch back to Server on Windows.
+Audio-click tests verify a live session cannot be toggled or reconnected.
+The 54 project tests pass on
+Windows (one native skip) and macOS. Packaged Windows and Mac builds passed
+their GUI/codec smoke checks. The redesign preserves the existing audio path
+and its outstanding Mac Bluetooth quality limitations. Audio now defaults on,
+with an explicit off preference preserved. Its compact control is read-only
+while connected and explains the disconnect requirement in a hover tooltip.
+Mode changes also require disconnecting first. The Mac Client has no mode
+selector; macOS and Linux Server backends are planned.
+A short warning appears when audio stalls. The palette uses black and charcoal,
+Apple-style blue for positive actions/status, and red for errors and the
+Disconnect/Stop server actions. Removing the universal QWidget stylesheet rule
+lets the native macOS/Windows scrollbar style paint the server list and logs;
+native Mac log renders were checked to confirm there are no fallback arrows.
+Checked controls include a centered white tick, including the read-only audio
+control. A rendered-pixel test verifies the white checkmark is actually present.
+
 ## Acceptance procedure
 
 1. Run `tools/verify_windows.py` with the verified driver installed. Require one

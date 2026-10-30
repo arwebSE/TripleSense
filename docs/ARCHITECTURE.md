@@ -25,9 +25,31 @@ Maintaining a new kernel bus driver would not alone solve the network/audio gap.
 This table describes the inherited contract; game acceptance is separate.
 The current physical-source profile is standard 054C:0CE6 over Bluetooth.
 
+## Desktop connection
+
+The standalone app uses controller-initiated connections. Windows listens on
+TCP 3250 with the TLS server identity; the Mac holds the TLS client identity
+and offers two outgoing connections. A loopback-only Windows USB/IP listener
+claims an offered connection when the signed bus driver needs it. The same
+USB device model handles requests over that authenticated connection. No
+incoming Mac listener or SSH forward is involved.
+
+PIN pairing on TCP 3251 uses SPAKE2 plus authenticated credential transfer and
+mutual key confirmation. The code is short-lived, rate-limited and single-use.
+Discovery sees `_dsshine._tcp` advertisements but does not
+treat discovery data as proof of identity. The desktop app does not borrow
+Moonlight credentials or join Moonlight's streaming connection.
+
+The app owns attachment/detachment directly, without Sunshine application
+hooks. A private ownership record supports recovery after an app crash. Port
+and unique serial checks still apply before detach. Quit waits for a pending
+attach command to finish recording ownership, then cleans up that device.
+Experimental controller audio defaults on; its disabled path does not arm the
+Bluetooth microphone or queue audio output.
+
 ## Ownership and security
 
-The source requires a paired client certificate over TLS 1.3. The host verifies
+For the original CLI connection, the source requires a paired client certificate over TLS 1.3. The host verifies
 the private CA and fixed server identity. Certificates have distinct server /
 client usages; the CA private key is never saved. No system trust store changes.
 

@@ -21,3 +21,26 @@ class ControllerBackend(BridgeBackend):
     def _writer_loop(self):
         with interactive_thread():
             super()._writer_loop()
+
+
+class StandaloneControllerBackend(ControllerBackend):
+    """Forward controller audio by default; preserve an explicit off setting."""
+
+    def __init__(self, *, audio_enabled=True, **kwargs):
+        self.audio_enabled = audio_enabled
+        super().__init__(auto_arm=audio_enabled, **kwargs)
+
+    def write_audio_out(self, pcm):
+        if self.audio_enabled:
+            super().write_audio_out(pcm)
+
+    def read_audio_in(self, nbytes):
+        return super().read_audio_in(nbytes) if self.audio_enabled else bytes(nbytes)
+
+    def set_alt_setting(self, interface, alt):
+        if self.audio_enabled:
+            super().set_alt_setting(interface, alt)
+
+    def on_uac_control(self, unit, selector, value):
+        if self.audio_enabled:
+            super().on_uac_control(unit, selector, value)
