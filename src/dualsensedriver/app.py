@@ -194,7 +194,7 @@ class AppEngine:
             if self.preferences.get("game_credentials"):
                 await self._start_game()
 
-    async def pair(self, address, code, *, manual=False):
+    async def pair(self, address, code, *, manual=False, transport=None):
         async with self.operation:
             if self.connection:
                 await self._stop()
@@ -206,6 +206,8 @@ class AppEngine:
                     str(exc) or "Pairing timed out. Check your address and VPN."
                 ) from exc
             profile["manual_address"] = manual
+            if transport:
+                profile["transport"] = transport
             saved_servers.remember(self.preferences, profile)
             self.save()
             await self.set_discovery_scanning(False)

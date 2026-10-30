@@ -76,6 +76,27 @@ def address_links(title, addresses):
     return escape(title) + (", ".join(links) or "Offline")
 
 
+def route_icon(transport):
+    pixmap = QPixmap(22, 22)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(
+        QColor(
+            {"LAN": "#505863", "Tailscale": "#426a95", "NetBird": "#7e5fa0"}.get(
+                transport, "#505863"
+            )
+        )
+    )
+    painter.drawRoundedRect(1, 1, 20, 20, 5, 5)
+    painter.setPen(QColor("#ffffff"))
+    painter.setFont(QFont("", 9, QFont.Weight.Bold))
+    painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, transport[:1])
+    painter.end()
+    return QIcon(pixmap)
+
+
 class PageStack(QStackedWidget):
     """Hidden pairing controls must not dictate the connection window size."""
 
@@ -766,11 +787,15 @@ class Window(QMainWindow):
             by_address[pc["address"]] = pc
         for pc in by_address.values():
             suffix = "" if pc["dsshine"] else " · open DSShine here first"
-            item = QListWidgetItem(pc["name"] + "\n" + pc["address"] + suffix)
+            transport = pc.get("transport", "LAN")
+            item = QListWidgetItem(pc["name"] + " · " + transport + "\n" + pc["address"] + suffix)
+            item.setIcon(route_icon(transport))
             item.setSizeHint(QSize(0, 55))
             item.setData(Qt.ItemDataRole.UserRole, pc)
             self.hosts.addItem(item)
-            if pc["id"] == selected:
+            if pc["id"] == selected and (
+                pc["address"] == selected_pc.get("address") or len(by_address) == 1
+            ):
                 self.hosts.setCurrentItem(item)
         self.hosts.setVisible(bool(self.hosts.count()))
         self.discovery_hint.setVisible(not self.hosts.count())
@@ -785,9 +810,18 @@ class Window(QMainWindow):
             if self.connected and identifier == self.preferences.get("selected_server"):
                 status = "online"
             word = {"online": "Online", "offline": "Offline", "checking": "Checking…"}[status]
+            transport = profile.get("transport")
+            route = " · " + transport if transport else ""
             item = QListWidgetItem(
-                profile.get("name", "Gaming PC") + "  ·  " + word + "\n" + profile["address"]
+                profile.get("name", "Gaming PC")
+                + route
+                + "  ·  "
+                + word
+                + "\n"
+                + profile["address"]
             )
+            if transport:
+                item.setIcon(route_icon(transport))
             item.setData(Qt.ItemDataRole.UserRole, identifier)
             item.setSizeHint(QSize(0, 54))
             item.setForeground(QColor("#64b5ff" if status == "online" else "#a1a5ad"))
@@ -823,8 +857,15 @@ class Window(QMainWindow):
         self.pairing_client = True
         self.pair_error.setText("Connecting to Server…")
         self._tone(self.pair_error, "info")
-        manual = not any(pc["address"] == address for pc in self.computers.values())
-        self._perform(self.engine.pair(address, code, manual=manual))
+        route = next(
+            (
+                pc.get("transport", "LAN")
+                for pc in self.computers.values()
+                if pc["address"] == address
+            ),
+            None,
+        )
+        self._perform(self.engine.pair(address, code, manual=True, transport=route))
 
     def _toggle(self):
         paired = (
@@ -955,12 +996,14 @@ class Window(QMainWindow):
                 self._open_pairing()
             return
         if kind == "computer":
-            self.computers[value["id"]] = value
+            self.computers[(value["id"], value["address"])] = value
             self._refresh_computers()
             self.engine.submit(self.engine.discovered(value))
             return
         if kind == "computer_removed":
-            self.computers.pop(value, None)
+            for key, computer in list(self.computers.items()):
+                if computer["id"] == value and computer.get("transport", "LAN") == "LAN":
+                    self.computers.pop(key, None)
             self._refresh_computers()
             return
         if kind == "idle":

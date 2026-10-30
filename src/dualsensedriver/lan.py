@@ -37,7 +37,7 @@ class LanDiscovery:
     def __init__(self, notify, identity, *, port=PORT, targets=None, scanning=True):
         self.notify, self.identity, self.port = notify, identity, port
         self.targets = targets
-        self.vpn_targets = set()
+        self.vpn_targets = {}
         self.next_vpn_scan = 0
         self.scanning = scanning
         self.name = socket.gethostname()[:64]
@@ -99,6 +99,7 @@ class LanDiscovery:
                 "address": peer[0],
                 "name": name,
                 "dsshine": True,
+                "transport": self.vpn_targets.get(peer[0], "LAN"),
             },
         )
 
@@ -117,9 +118,9 @@ class LanDiscovery:
                     targets = self.targets
                     if targets is None:
                         if time.monotonic() >= self.next_vpn_scan:
-                            self.vpn_targets = vpn.targets()
+                            self.vpn_targets = vpn.routes()
                             self.next_vpn_scan = time.monotonic() + 5
-                        targets = broadcast_addresses() | self.vpn_targets
+                        targets = broadcast_addresses() | set(self.vpn_targets)
                     for target in targets:
                         try:
                             self.client.sendto(packet, (target, self.port))

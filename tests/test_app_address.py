@@ -69,6 +69,39 @@ class DesktopTests(unittest.TestCase):
         window.addresses.linkActivated.emit("192.168.1.190")
         self.assertEqual(self.application.clipboard().text(), "192.168.1.190")
 
+    def test_discovery_keeps_separate_selectable_routes_for_the_same_machine(self):
+        window = self.window
+        for transport, address in (
+            ("LAN", "192.168.1.190"),
+            ("Tailscale", "100.97.43.25"),
+            ("NetBird", "100.127.28.249"),
+        ):
+            window.on_event(
+                "computer",
+                {
+                    "id": "dsshine:one",
+                    "host_id": "one",
+                    "name": "Gaming PC",
+                    "address": address,
+                    "dsshine": True,
+                    "transport": transport,
+                },
+            )
+        self.assertEqual(window.hosts.count(), 3)
+        for index in range(3):
+            item = window.hosts.item(index)
+            route = item.data(Qt.ItemDataRole.UserRole)
+            self.assertIn(route["transport"], item.text())
+            self.assertFalse(item.icon().isNull())
+            window._choose_discovered(item)
+            self.assertEqual(window.manual_address.text(), route["address"])
+        window.hosts.setCurrentRow(1)
+        selected = window.hosts.currentItem().data(Qt.ItemDataRole.UserRole)["address"]
+        window._refresh_computers()
+        self.assertEqual(
+            window.hosts.currentItem().data(Qt.ItemDataRole.UserRole)["address"], selected
+        )
+
     def test_main_window_has_no_scroll_container_or_dropdown(self):
         self.assertEqual(self.window.findChildren(QScrollArea), [])
         self.assertEqual(self.window.findChildren(QComboBox), [])
