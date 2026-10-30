@@ -183,7 +183,7 @@ def set_launch_at_login(enabled):
                     "DSShine",
                     0,
                     winreg.REG_SZ,
-                    subprocess.list2cmdline([sys.executable, "--background"]),
+                    subprocess.list2cmdline([sys.executable]),
                 )
             else:
                 try:
@@ -198,7 +198,7 @@ def set_launch_at_login(enabled):
                 plistlib.dump(
                     {
                         "Label": "me.dsshine.app",
-                        "ProgramArguments": [sys.executable, "--background"],
+                        "ProgramArguments": [sys.executable],
                         "RunAtLoad": True,
                         "LimitLoadToSessionType": "Aqua",
                     },

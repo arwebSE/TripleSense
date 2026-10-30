@@ -11,3 +11,7 @@ virtual-device path before enabling its Server interface.
 
 The current macOS app is Client-only and has no mode selector. Windows can
 change between Server and Client after disconnecting/stopping its active session.
+
+For public Mac distribution, add Developer ID signing and Apple notarization
+to the release process. Current preview bundles use local ad-hoc signatures,
+so downloaded copies can require a Gatekeeper override on another Mac.

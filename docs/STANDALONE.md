@@ -7,7 +7,7 @@ and mouse. No paid virtual-controller driver or Sunshine fork is required.
 
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.4.4-Windows-x64.exe`. The installer includes
+1. **Windows:** run `DSShine-Setup-0.4.5-Windows-x64.exe`. The installer includes
    the signed USB/IP driver, adds app-specific local-subnet firewall rules,
    and offers to disable Sunshine controller forwarding. It backs up the
    Sunshine setting and does not restart Windows or Sunshine automatically.
@@ -35,9 +35,9 @@ from macOS. Moonlight may still use it for local UI navigation.
 
 Open DSShine on both computers and turn on the controller. Paired computers
 reconnect automatically. **Settings → Start DSShine when I log in** is enabled on first
-launch and can be disabled in the app. Closing the window leaves it in the
-tray/menu bar; **Quit DSShine**
-releases effects and removes its owned virtual controller.
+launch and can be disabled in the app. Closing the main window releases effects,
+removes its owned virtual controller and quits DSShine. Minimize the window to
+keep the controller connected. There is no tray or menu-bar icon.
 
 Disconnect works independently of the video stream. A network loss releases
 controller effects; the app reconnects and recreates its virtual controller.

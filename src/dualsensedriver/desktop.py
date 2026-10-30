@@ -30,13 +30,11 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMainWindow,
-    QMenu,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
     QSizePolicy,
     QStackedWidget,
-    QSystemTrayIcon,
     QToolTip,
     QVBoxLayout,
     QWidget,
@@ -120,7 +118,7 @@ class Window(QMainWindow):
         self.events.event.connect(self.on_event)
         self.engine = AppEngine(root, self.preferences, self.events.event.emit)
         self.computers = {}
-        self.busy = self.connected = self.quitting = False
+        self.busy = self.connected = self.quitting = self.closing = False
         self.current_role = self.preferences.get(
             "role", "game" if sys.platform == "win32" else "controller"
         )
@@ -132,7 +130,11 @@ class Window(QMainWindow):
         self._build()
         self.tooltip_filter = DisabledTooltips(self)
         QApplication.instance().installEventFilter(self.tooltip_filter)
-        self._tray()
+        self.setWindowIcon(QIcon(str(Path(__file__).with_name("assets") / "dsshine.svg")))
+        quit_action = QAction("Quit DSShine", self)
+        quit_action.setShortcut("Ctrl+Q" if sys.platform == "win32" else "Meta+Q")
+        quit_action.triggered.connect(self.quit)
+        self.addAction(quit_action)
         self._show_role()
         self._refresh_computers()
         self._fit_page()
@@ -927,41 +929,15 @@ class Window(QMainWindow):
         if self.copy_code.isEnabled():
             QApplication.clipboard().setText(self.pin.text())
 
-    def _tray(self):
-        self.tray = QSystemTrayIcon(
-            QIcon(str(Path(__file__).with_name("assets") / "dsshine.svg")), self
-        )
-        self.setWindowIcon(self.tray.icon())
-        self.tray.setToolTip("DSShine")
-        menu = QMenu()
-        show = QAction("Open DSShine", self)
-        show.triggered.connect(self.showNormal)
-        menu.addAction(show)
-        quit_action = QAction("Quit DSShine", self)
-        quit_action.setShortcut("Ctrl+Q" if sys.platform == "win32" else "Meta+Q")
-        quit_action.triggered.connect(self.quit)
-        self.addAction(quit_action)
-        menu.addAction(quit_action)
-        self.tray.setContextMenu(menu)
-        self.tray.activated.connect(
-            lambda reason: self.showNormal()
-            if reason == QSystemTrayIcon.ActivationReason.Trigger
-            else None
-        )
-        self.tray.show()
-
     def closeEvent(self, event):
         if self.quitting:
             event.accept()
-        elif QSystemTrayIcon.isSystemTrayAvailable():
-            self.hide()
-            event.ignore()
         else:
             event.ignore()
             self.quit()
 
     def quit(self):
-        if self.quitting:
+        if self.quitting or self.closing:
             return
         self.retry.stop()
         self.status.setText("Disconnecting…")
@@ -976,6 +952,7 @@ class Window(QMainWindow):
             try:
                 future.result()
             except Exception as exc:
+                self.closing = False
                 self.busy = False
                 self._update_actions()
                 QMessageBox.warning(self, "Could not disconnect safely", str(exc))
@@ -983,7 +960,6 @@ class Window(QMainWindow):
             self.quitting = True
             self.engine.loop.call_soon_threadsafe(self.engine.loop.stop)
             self.engine.thread.join(timeout=2)
-            self.tray.hide()
             QApplication.instance().quit()
 
         check()

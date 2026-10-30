@@ -6,11 +6,12 @@ import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -39,10 +40,19 @@ class DesktopTests(unittest.TestCase):
         self.window.engine.loop.call_soon_threadsafe(self.window.engine.loop.stop)
         self.window.engine.thread.join(2)
         self.window.quitting = True
-        self.window.tray.hide()
         self.window.close()
         self.application.processEvents()
         self.temporary.cleanup()
+
+    def test_closing_main_window_quits_instead_of_hiding(self):
+        window = self.window
+        self.assertFalse(hasattr(window, "tray"))
+        event = QCloseEvent()
+        with patch.object(window, "quit") as quit_app:
+            window.closeEvent(event)
+        quit_app.assert_called_once_with()
+        self.assertFalse(event.isAccepted())
+        self.assertTrue(window.isVisible())  # Remain visible while shutdown cleans up.
 
     def test_main_window_has_no_scroll_container_or_dropdown(self):
         self.assertEqual(self.window.findChildren(QScrollArea), [])

@@ -15,7 +15,7 @@ It uses the free signed USB/IP driver, with no paid Sunshine driver or fork.
   the code. Turn on your Bluetooth DualSense.
 
 After pairing, DSShine reconnects automatically and opens at login. Closing its
-window leaves it running in the tray or menu bar. Use your normal Moonlight
+window disconnects the controller and quits the app. Minimize it to keep it running. Use your normal Moonlight
 Desktop or game entry. No terminal, SSH, Python or certificate setup is required.
 
 [Setup and troubleshooting](docs/STANDALONE.md) ·

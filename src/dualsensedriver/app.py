@@ -375,8 +375,8 @@ def main(argv=None):
                 window.engine.submit(window.engine.update_preferences("launch_at_login", True))
             except (OSError, RuntimeError) as exc:
                 window.on_event("error", "Could not enable automatic startup: " + str(exc))
-    if not args.background:
-        window.show()
+    # Accept the legacy flag so existing login entries still open a visible app.
+    window.show()
     if args.smoke_test:
 
         def smoke():
