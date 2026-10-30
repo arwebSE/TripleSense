@@ -378,7 +378,7 @@ class Window(QMainWindow):
         self.centralWidget().layout().activate()
         pairing = self.pages.currentWidget() is getattr(self, "pair_page", None)
         height = (
-            (530 if self.current_role == "controller" else 430)
+            (570 if self.current_role == "controller" else 430)
             if pairing
             else (440 if self.current_role == "controller" else 404)
         )
