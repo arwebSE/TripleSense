@@ -173,6 +173,8 @@ class Window(QMainWindow):
         self.computers = {}
         self.server_states = {}
         self.busy = self.connected = self.quitting = self.closing = self.pairing_client = False
+        self.starting_connection = False
+        self.action = None
         self.current_role = self.preferences.get(
             "role", "game" if sys.platform == "win32" else "controller"
         )
@@ -660,9 +662,15 @@ class Window(QMainWindow):
             else self.preferences.get("controller_profile")
         )
         self.connect_button.setText("Disconnect" if active else "Connect")
+        if self.starting_connection:
+            self.connect_button.setText("Cancel")
         if not paired and not server:
             self.connect_button.setText("Pair server")
-        self._tone(self.connect_button, "danger" if active else "positive", "intent")
+        self._tone(
+            self.connect_button,
+            "danger" if active or self.starting_connection else "positive",
+            "intent",
+        )
         self.pair_button.setText("Pair another client")
         self.pair_button.setVisible(False)
         for control in (
@@ -673,6 +681,8 @@ class Window(QMainWindow):
             self.pair_back,
         ):
             control.setEnabled(not self.busy)
+        if self.starting_connection:
+            self.connect_button.setEnabled(True)
         self.pair_submit.setText("Connecting…" if self.pairing_client else "Connect")
         self.pair_button.setEnabled(not self.busy and not self.connected)
         self.inline_refresh.setEnabled(not self.busy and not self.connected)
@@ -923,6 +933,15 @@ class Window(QMainWindow):
         self._perform(self.engine.pair(address, code, manual=True, transport=route))
 
     def _toggle(self):
+        if self.starting_connection:
+            self.auto.setChecked(False)
+            self.starting_connection = False
+            if self.action:
+                self.action.cancel()
+            self.status.setText("Disconnected")
+            self.description.setText("Connection cancelled.")
+            self._update_actions()
+            return
         if self.current_role == "game":
             self._perform(
                 self.engine.stop()
@@ -948,7 +967,7 @@ class Window(QMainWindow):
     def _perform(self, coroutine):
         self.busy = True
         self._update_actions()
-        self.engine.submit(coroutine, busy=True)
+        self.action = self.engine.submit(coroutine, busy=True)
 
     def _auto_connect(self):
         if (
@@ -1070,10 +1089,11 @@ class Window(QMainWindow):
             return
         if kind == "idle":
             self.busy = False
+            self.starting_connection = False
             self.pairing_client = False
             self._update_actions()
             return
-        if kind == "pair_code":
+        if kind in ("pair_code", "pair_code_rotated"):
             if self.current_role == "game":
                 self.pages.setCurrentWidget(self.connection_page)
             self.pin.setText(value if value else "Code expired")
@@ -1081,7 +1101,7 @@ class Window(QMainWindow):
             self.inline_pin.setToolTip("Valid for 2 minutes" if value else "Generate a new code")
             self.inline_copy.setEnabled(bool(value))
             self.copy_code.setEnabled(bool(value))
-            if value:
+            if value and kind == "pair_code":
                 self._copy_code()
             self.pin_hint.setText(
                 "Copied to clipboard. Valid for 2 minutes."
@@ -1115,6 +1135,8 @@ class Window(QMainWindow):
             self._back()
             return
         if kind == "error":
+            self.starting_connection = False
+            self.auto.setChecked(False)
             self.pairing_client = False
             self._tone(self.pair_error, "danger")
             self.status.setText(self._error_heading(message))
@@ -1142,13 +1164,17 @@ class Window(QMainWindow):
         elif kind == "controller_started":
             self.status.setText("Connecting…")
             self.description.setText("DualSense found. Connecting to your Server.")
+        elif kind == "connecting":
+            self.starting_connection = True
+            self.status.setText("Connecting…")
+            self.description.setText(message)
         elif kind == "controller_waiting":
             self.connected = False
             self.status.setText("Controller disconnected")
             self.description.setText("Press PS to reconnect your DualSense to this Client.")
         elif kind == "reconnecting":
             self.connected = False
-            self.status.setText("Server unreachable")
+            self.status.setText(self._error_heading(message))
             self.description.setText(self._friendly_error(message) + " Retrying automatically…")
         elif kind == "waiting":
             self.connected = False

@@ -1,11 +1,49 @@
 """Scheduling adapter around the pinned physical Bluetooth backend."""
 
+import os
+import sys
+
 from ds5emu.bridge import BridgeBackend
 
 from .latency import interactive_thread
 
 
 class ControllerBackend(BridgeBackend):
+    def _native_bluetooth_enabled(self):
+        return sys.platform == "darwin" and os.environ.get("DSSHINE_NATIVE_BLUETOOTH", "1") != "0"
+
+    def _pick_device(self):
+        try:
+            return super()._pick_device()
+        except RuntimeError:
+            if self._native_bluetooth_enabled() and self.transport == "BT":
+                from .macos_bluetooth import remembered_controller
+
+                info = remembered_controller()
+                if info and (not self.serial or self.serial.lower() == info.serial.lower()):
+                    return info
+            raise
+
+    def _make_device(self, info):
+        if self._native_bluetooth_enabled() and info.transport == "BT":
+            from .macos_bluetooth import NativeDualSense
+
+            self._opening_native = NativeDualSense(info)
+            return self._opening_native
+        return super()._make_device(info)
+
+    def _open_device(self):
+        try:
+            return super()._open_device()
+        finally:
+            self._opening_native = None
+
+    def stop(self):
+        pending = getattr(self, "_opening_native", None)
+        if pending is not None:
+            pending.h.close()
+        super().stop()
+
     def start(self):
         with interactive_thread():
             super().start()

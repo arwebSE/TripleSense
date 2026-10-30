@@ -179,7 +179,7 @@ class AppEngine:
                 return
             await self._create_pairing_offer()
 
-    async def _create_pairing_offer(self):
+    async def _create_pairing_offer(self, *, auto_copy=True):
         async def accepted(credentials, name):
             if self.receiver:
                 if self.receiver.owned_port is not None:
@@ -188,6 +188,9 @@ class AppEngine:
                 self.receiver = None
             self.preferences["game_credentials"] = str(credentials)
             self.preferences["controller_name"] = name
+            from .server_identity import remember
+
+            remember(self.root, credentials, name)
             self.save()
             await self._start_game()
             self.notify("pair_code", "")
@@ -197,14 +200,20 @@ class AppEngine:
             self.root / "identities", accepted, host_id=self.preferences["computer_id"]
         )
         await self.pairing.start()
-        self.notify("pair_code", self.pairing.code)
+        offer = self.pairing
+        self.notify("pair_code" if auto_copy else "pair_code_rotated", self.pairing.code)
 
         async def expire():
             await asyncio.sleep(120)
-            if self.pairing:
+            async with self.operation:
+                if self.pairing is not offer:
+                    return
                 await self.pairing.stop()
                 self.pairing = None
-            self.notify("pair_code", "")
+                if not self.receiver or self.receiver.owned_port is None:
+                    await self._create_pairing_offer(auto_copy=False)
+                else:
+                    self.notify("pair_code", "")
 
         self.expiry = asyncio.create_task(expire())
 
@@ -283,8 +292,9 @@ class AppEngine:
             profile = self.preferences.get("controller_profile")
             if not profile:
                 raise RuntimeError("Choose your game PC and pair it first")
+            self.notify("connecting", "Opening your DualSense Bluetooth connection…")
             await asyncio.to_thread(require_controller_isolation)
-            selected = await asyncio.to_thread(choose_controller, None)
+            selected = await asyncio.to_thread(choose_controller, None, allow_remembered=True)
             from .controller import StandaloneControllerBackend
 
             backend = StandaloneControllerBackend(

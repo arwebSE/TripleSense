@@ -15,7 +15,7 @@ tested with a real controller; Windows-to-Windows still needs live validation.
 
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.4.13-Windows-x64.exe`. The installer includes
+1. **Windows:** run `DSShine-Setup-0.4.15-Windows-x64.exe`. The installer includes
    the signed USB/IP driver and adds app-specific LAN and private-VPN firewall rules.
    It does not change your streaming software or restart Windows automatically.
 2. **Mac:** open `DSShine-macOS.dmg` and drag DSShine into Applications,
@@ -96,7 +96,7 @@ access policies must allow the connection. While adding a server, discovery chec
 seconds. Discovery stops after pairing or leaving that screen and resumes only
 when you return to add a server. Saved-server online/offline checks are separate.
 The VPN app must be installed and signed in, with a policy allowing UDP 3252
-and TCP 3250–3251 between the computers. If discovery is blocked, enter the
+and TCP 3250ï¿½3251 between the computers. If discovery is blocked, enter the
 Server's VPN address directly. Click a Server IP address to copy it. Manual addresses are retained even
 when LAN discovery finds another address for the same server. Tailscale controller
 input and adaptive-trigger feedback have passed a live test; NetBird's firewall

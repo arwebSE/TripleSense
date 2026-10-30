@@ -70,12 +70,18 @@ def devices() -> list[dict]:
     ]
 
 
-def choose_controller(serial: str | None):
+def choose_controller(serial: str | None, *, allow_remembered=False):
     from ds5bridge.device import enumerate_devices
 
     candidates = [d for d in enumerate_devices() if d.transport == "BT"]
     if serial:
         candidates = [d for d in candidates if d.serial.lower() == serial.lower()]
+    if not candidates and allow_remembered and sys.platform == "darwin":
+        from .macos_bluetooth import remembered_controller
+
+        remembered = remembered_controller()
+        if remembered and (not serial or remembered.serial.lower() == serial.lower()):
+            return remembered
     if len(candidates) != 1:
         raise RuntimeError(
             f"Expected one Bluetooth DualSense; found {len(candidates)}. "

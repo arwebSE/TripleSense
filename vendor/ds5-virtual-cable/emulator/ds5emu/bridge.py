@@ -1096,9 +1096,12 @@ class BridgeBackend(Backend):
         raise RuntimeError(
             f"no {self.transport} DualSense with serial {self.serial!r}; saw {seen}")
 
+    def _make_device(self, info):
+        return DEV.DualSense(info)
+
     def _open_device(self) -> None:
         info = self._pick_device()
-        dev = DEV.DualSense(info)
+        dev = self._make_device(info)
         dev.open(flip_extended=False)
         if dev.is_bt:
             # Reading feature 0x05 is what flips the controller out of the

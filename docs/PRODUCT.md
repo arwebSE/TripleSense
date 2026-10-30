@@ -26,6 +26,8 @@ forwarding remain work to implement and validate.
 
 Audio transport exists, but continuous Mac Bluetooth audio currently drops out.
 Reliable audio is required for the product; it is not an excluded feature.
+Current measurements and failed approaches are recorded in
+[the Bluetooth audio investigation](BLUETOOTH_AUDIO.md).
 
 ## Optional couch controls
 
@@ -38,6 +40,8 @@ Mouse mode should support pointer movement, clicking and gestures such as
 two-finger scrolling. Consume menu/keyboard/mouse-mode combinations before
 forwarding input to games; closing a menu restores normal controller input.
 These features are planned, not implemented.
+Touchpad mouse control is explicitly deferred to a future update; Bluetooth
+audio is the current release priority.
 
 ## Release priorities
 

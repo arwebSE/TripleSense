@@ -12,8 +12,9 @@ are our tested setup, but are not required by DSShine.
 [Setup and troubleshooting](docs/STANDALONE.md)
 
 > **Preview release:** controller input and adaptive triggers have been tested.
-> Controller speaker, microphone and detailed audio haptics are still experimental;
-> Bluetooth audio can drop out. Other streaming apps have not yet been tested.
+> Bluetooth speaker and microphone have passed Mac-to-Windows signal tests with
+> the new native Mac transport. Detailed audio haptics and broader hardware/OS
+> compatibility still need testing. Other streaming apps have not yet been tested.
 
 ## What you need
 
@@ -44,9 +45,11 @@ the controller driver. macOS and Linux gaming-PC support is planned.
    seconds while adding a server. You can also enter the address manually.
 5. Turn on your DualSense and start your game or stream.
 
-Pairing is saved, so you only need the code once. New codes copy automatically;
+Pairing is saved, so you only need the code once. Newly requested codes copy automatically;
 **Copy code** copies the displayed code again. Click any Server IP address to
 copy that address.
+While waiting, the Server renews expired codes automatically without changing
+your clipboard or your existing pairing.
 The Client keeps a saved-server list with online/offline indicators. Use
 **Add server** to pair another computer, or **Remove** to forget an old one.
 
