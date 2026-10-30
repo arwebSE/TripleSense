@@ -97,6 +97,25 @@ def route_icon(transport):
     return QIcon(pixmap)
 
 
+def pairing_icon(copy):
+    pixmap = QPixmap(22, 22)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(QPen(QColor("#e8edf5"), 1.7))
+    if copy:
+        painter.drawRoundedRect(8, 7, 10, 12, 2, 2)
+        painter.drawLine(5, 15, 4, 15)
+        painter.drawLine(4, 15, 4, 3)
+        painter.drawLine(4, 3, 14, 3)
+    else:
+        painter.drawArc(4, 4, 14, 14, 40 * 16, 290 * 16)
+        painter.drawLine(18, 4, 18, 10)
+        painter.drawLine(18, 10, 12, 10)
+    painter.end()
+    return QIcon(pixmap)
+
+
 class PageStack(QStackedWidget):
     """Hidden pairing controls must not dictate the connection window size."""
 
@@ -362,6 +381,27 @@ class Window(QMainWindow):
         self.addresses = label("", "muted", wrap=True)
         self._enable_address_copy(self.addresses)
         content.addWidget(self.addresses)
+        self.inline_pairing = QWidget()
+        pairing_layout = QHBoxLayout(self.inline_pairing)
+        pairing_layout.setContentsMargins(0, 8, 0, 0)
+        pairing_layout.setSpacing(8)
+        caption = label("Pairing code")
+        caption.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        pairing_layout.addWidget(caption)
+        self.inline_pin = label("—", "heading")
+        self.inline_pin.setStyleSheet("font-size:28px; color:#91caff; font-weight:600;")
+        pairing_layout.addWidget(self.inline_pin, 1)
+        self.inline_copy = button("", self._copy_code)
+        self.inline_refresh = button("", self._generate_code)
+        for control, is_copy in ((self.inline_copy, True), (self.inline_refresh, False)):
+            control.setIcon(pairing_icon(is_copy))
+            control.setFixedSize(36, 36)
+            control.setStyleSheet("padding:0;")
+            control.setToolTip("Copy pairing code" if is_copy else "Generate a new pairing code")
+            control.setAccessibleName(control.toolTip())
+            pairing_layout.addWidget(control)
+        self.inline_copy.setEnabled(False)
+        content.addWidget(self.inline_pairing)
         layout.addWidget(card)
         self.saved_box = QWidget()
         saved_layout = QVBoxLayout(self.saved_box)
@@ -565,6 +605,7 @@ class Window(QMainWindow):
         for widget in (self.peer_gap, self.peer_label, self.peer_name, self.addresses):
             widget.setVisible(server)
         self.saved_box.setVisible(not server)
+        self.inline_pairing.setVisible(server)
         self._refresh_saved_servers()
         self._update_peer()
         self._update_actions()
@@ -573,7 +614,7 @@ class Window(QMainWindow):
             if server
             else self.preferences.get("controller_profile")
         )
-        if not paired:
+        if not paired and not server:
             self._show_pair_page()
         if hasattr(self, "settings"):
             self._fit_page()
@@ -610,18 +651,20 @@ class Window(QMainWindow):
 
     def _update_actions(self):
         server = self.current_role == "game"
-        active = bool(self.engine.receiver if server else self.engine.connection)
+        active = bool(
+            (self.engine.receiver or self.engine.pairing) if server else self.engine.connection
+        )
         paired = bool(
             self.preferences.get("game_credentials")
             if server
             else self.preferences.get("controller_profile")
         )
         self.connect_button.setText("Disconnect" if active else "Connect")
-        if not paired:
-            self.connect_button.setText("Pair client" if server else "Pair server")
-        self._tone(self.connect_button, "danger" if active and paired else "positive", "intent")
+        if not paired and not server:
+            self.connect_button.setText("Pair server")
+        self._tone(self.connect_button, "danger" if active else "positive", "intent")
         self.pair_button.setText("Pair another client")
-        self.pair_button.setVisible(bool(paired) and server)
+        self.pair_button.setVisible(False)
         for control in (
             self.connect_button,
             self.pair_button,
@@ -632,6 +675,12 @@ class Window(QMainWindow):
             control.setEnabled(not self.busy)
         self.pair_submit.setText("Connecting…" if self.pairing_client else "Connect")
         self.pair_button.setEnabled(not self.busy and not self.connected)
+        self.inline_refresh.setEnabled(not self.busy and not self.connected)
+        self.inline_refresh.setToolTip(
+            "Disconnect before generating a pairing code"
+            if self.connected
+            else "Generate a new pairing code"
+        )
         self.pair_button.setToolTip(
             "Disconnect before pairing another client" if self.connected else ""
         )
@@ -740,7 +789,10 @@ class Window(QMainWindow):
     def _open_pairing(self):
         if self.engine.connection or self.connected:
             return
-        self._show_pair_page()
+        if self.current_role == "game":
+            self.pages.setCurrentWidget(self.connection_page)
+        else:
+            self._show_pair_page()
         self.pair_error.clear()
         if self.current_role == "game":
             if not self.engine.pairing:
@@ -871,6 +923,13 @@ class Window(QMainWindow):
         self._perform(self.engine.pair(address, code, manual=True, transport=route))
 
     def _toggle(self):
+        if self.current_role == "game":
+            self._perform(
+                self.engine.stop()
+                if (self.engine.receiver or self.engine.pairing)
+                else self.engine.connect()
+            )
+            return
         paired = (
             self.preferences.get("game_credentials")
             if self.current_role == "game"
@@ -1015,8 +1074,12 @@ class Window(QMainWindow):
             self._update_actions()
             return
         if kind == "pair_code":
-            self._show_pair_page()
+            if self.current_role == "game":
+                self.pages.setCurrentWidget(self.connection_page)
             self.pin.setText(value if value else "Code expired")
+            self.inline_pin.setText(value if value else "Expired")
+            self.inline_pin.setToolTip("Valid for 2 minutes" if value else "Generate a new code")
+            self.inline_copy.setEnabled(bool(value))
             self.copy_code.setEnabled(bool(value))
             if value:
                 self._copy_code()
@@ -1072,6 +1135,7 @@ class Window(QMainWindow):
             self.connected = True
             self.status.setText("Connected")
             self.description.setText("Your DualSense is available to games on the Server.")
+            self.inline_pairing.setVisible(False)
         elif kind == "available":
             self.status.setText("Starting controller…")
             self.description.setText("Computers are connected. Preparing the DualSense.")
@@ -1088,6 +1152,7 @@ class Window(QMainWindow):
             self.description.setText(self._friendly_error(message) + " Retrying automatically…")
         elif kind == "waiting":
             self.connected = False
+            self.inline_pairing.setVisible(self.current_role == "game")
             paired = bool(self.preferences.get("game_credentials"))
             self.status.setText("Waiting for client" if paired else "Pair your client")
             self.description.setText(
@@ -1097,6 +1162,8 @@ class Window(QMainWindow):
             )
         elif kind == "stopped":
             self.connected = False
+            self.inline_pin.setText("—")
+            self.inline_copy.setEnabled(False)
             paired = (
                 self.preferences.get("game_credentials")
                 if self.current_role == "game"

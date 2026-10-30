@@ -194,6 +194,12 @@ class DesktopTests(unittest.TestCase):
     def test_pairing_code_never_enters_logs(self):
         self.window.on_event("pair_code", "1234")
         self.assertEqual(self.window.pin.text(), "1234")
+        self.assertEqual(self.window.inline_pin.text(), "1234")
+        if self.window.current_role == "game":
+            self.assertIs(self.window.pages.currentWidget(), self.window.connection_page)
+            self.assertFalse(self.window.inline_pairing.isHidden())
+        self.assertEqual(self.window.inline_copy.width(), 36)
+        self.assertEqual(self.window.inline_refresh.width(), 36)
         self.assertEqual(self.application.clipboard().text(), "1234")
         self.application.clipboard().setText("other")
         self.window.copy_code.click()
