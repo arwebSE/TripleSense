@@ -152,6 +152,8 @@ class AppEngine:
         credentials = self.preferences.get("game_credentials")
         if not credentials:
             self.notify("waiting", "Pair your controller computer to get started")
+            if not self.pairing:
+                await self._create_pairing_offer()
             return
         receiver = GameReceiver(
             credentials, self.notify, usbip=usbip, ownership_file=self.root / "usb-session.json"
@@ -159,18 +161,36 @@ class AppEngine:
         await receiver.start()
         self.receiver = receiver
         self.notify("waiting", "Ready for your controller computer")
+        if not self.pairing:
+            await self._create_pairing_offer()
 
     async def begin_pairing(self):
         async with self.operation:
-            await self._stop()
+            if self.receiver and self.receiver.owned_port is not None:
+                raise RuntimeError("Disconnect before pairing another client")
+            if self.expiry:
+                self.expiry.cancel()
+                self.expiry = None
+            if self.pairing:
+                await self.pairing.stop()
+                self.pairing = None
+            if not self.receiver and self.preferences.get("game_credentials"):
+                await self._start_game()
+                return
             await self._create_pairing_offer()
 
     async def _create_pairing_offer(self):
         async def accepted(credentials, name):
+            if self.receiver:
+                if self.receiver.owned_port is not None:
+                    raise RuntimeError("Disconnect before pairing another client")
+                await self.receiver.stop()
+                self.receiver = None
             self.preferences["game_credentials"] = str(credentials)
             self.preferences["controller_name"] = name
             self.save()
             await self._start_game()
+            self.notify("pair_code", "")
             self.notify("paired", name)
 
         self.pairing = PairingOffer(

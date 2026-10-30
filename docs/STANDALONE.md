@@ -15,7 +15,7 @@ tested with a real controller; Windows-to-Windows still needs live validation.
 
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.4.12-Windows-x64.exe`. The installer includes
+1. **Windows:** run `DSShine-Setup-0.4.13-Windows-x64.exe`. The installer includes
    the signed USB/IP driver and adds app-specific LAN and private-VPN firewall rules.
    It does not change your streaming software or restart Windows automatically.
 2. **Mac:** open `DSShine-macOS.dmg` and drag DSShine into Applications,
@@ -139,7 +139,10 @@ macOS and Linux Server support is [planned](ROADMAP.md). The connection view
 shows status, the paired computer, controller audio on the Client, and the main
 connection action. **Disconnect** stops the controller connection on either computer. Neither action stops your streaming software.
 
-Pairing has its own screen. Discovered servers are listed by name and address;
+Server pairing codes appear automatically in the main status card. The small
+copy and refresh icons copy the current code or create another. Existing paired
+clients can still reconnect while a code is displayed. Client pairing has its own
+screen. Discovered servers are listed by name and address;
 there is no dropdown. Settings and Logs open in separate windows. The connection
 and pairing screens do not scroll; only the server list and log contents can scroll.
 Those scrollbars use the platform's native widget style.
