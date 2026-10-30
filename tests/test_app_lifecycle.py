@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
+from dualsensedriver.app import AppEngine
 from dualsensedriver.controller import StandaloneControllerBackend
 from dualsensedriver.credentials import generate_pair
 from dualsensedriver.reverse import GameReceiver
@@ -34,6 +35,17 @@ class AppCleanupTests(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         self.temp.cleanup()
+
+    async def test_audio_change_rejects_live_session_without_reconnecting(self):
+        engine = object.__new__(AppEngine)
+        engine.root = self.root
+        engine.operation = asyncio.Lock()
+        engine.preferences = {"audio": True}
+        engine.connection = AsyncMock()
+        with self.assertRaisesRegex(RuntimeError, "Disconnect to change audio"):
+            await engine.set_audio(False)
+        self.assertTrue(engine.preferences["audio"])
+        engine.connection.stop.assert_not_awaited()
 
     async def test_restart_checks_previous_ownership_before_opening_another_device(self):
         self.record.write_text(

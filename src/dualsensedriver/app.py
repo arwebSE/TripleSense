@@ -253,14 +253,10 @@ class AppEngine:
 
     async def set_audio(self, enabled):
         async with self.operation:
+            if self.connection:
+                raise RuntimeError("Disconnect to change audio")
             self.preferences["audio"] = enabled
             self.save()
-            reconnect = self.connection is not None
-            if reconnect:
-                await self.connection.stop()
-                self.connection = None
-        if reconnect:
-            await self.connect()
 
     async def shutdown(self):
         await self.stop()

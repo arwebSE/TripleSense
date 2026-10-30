@@ -7,7 +7,7 @@ and mouse. No paid virtual-controller driver or Sunshine fork is required.
 
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.4.0-Windows-x64.exe`. The installer includes
+1. **Windows:** run `DSShine-Setup-0.4.1-Windows-x64.exe`. The installer includes
    the signed USB/IP driver, adds app-specific local-subnet firewall rules,
    and offers to disable Sunshine controller forwarding. It backs up the
    Sunshine setting and does not restart Windows or Sunshine automatically.
@@ -51,8 +51,9 @@ controls the controller speaker/microphone and detailed audio haptics.
 Mac Bluetooth audio still has measured stalls and dropouts, and this
 setting does not imply clean audio or game-specific haptic compatibility.
 
-Changing the switch reconnects the controller automatically. Audio status
-reports Bluetooth output stalls instead of claiming audio is healthy.
+Disconnect before changing audio. During a connection the switch is read-only;
+clicking it explains that a disconnect is needed, without restarting the session.
+Audio status reports Bluetooth output stalls instead of claiming audio is healthy.
 
 With this option off, the app does not arm the microphone or send Bluetooth
 audio packets. Ordinary game sound still plays through Moonlight.
@@ -105,7 +106,9 @@ competing controller instance.
 
 ## Interface
 
-The main window uses explicit **Server** and **Client** buttons. Server runs on
+**Change mode** opens explicit **Server** and **Client** choices and remains
+available while connected. Selecting another mode stops the current session
+and saves the new mode. Server runs on
 the Windows Sunshine PC; Client runs beside the controller. The connection view
 shows status, the paired computer, controller audio on the Client, and the main
 connection action. **Stop server** stops accepting the controller; **Disconnect**
@@ -114,6 +117,7 @@ disconnects the Client. Neither action stops the Moonlight video stream.
 Pairing has its own screen. Discovered servers are listed by name and address;
 there is no dropdown. Settings and Logs open in separate windows. The connection
 and pairing screens do not scroll; only the server list and log contents can scroll.
+Those scrollbars use the platform's native widget style.
 
 ## Building
 

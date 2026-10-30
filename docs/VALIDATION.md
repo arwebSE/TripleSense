@@ -151,14 +151,20 @@ at about 640×405 (Server) and 640×442 (Client), instead of expanding the statu
 card to fill a tall window. Pairing can use a taller window, then returning to
 the connection view restores the compact size. Layout regression checks exercise
 both roles, including an error message, visible action bounds and separation
-between the server list and code input. The 49 project tests pass on
+between the server list and code input. Mode-switch tests stop a live receiver,
+select Client, verify the saved mode, and switch back to Server on Windows.
+Audio-click tests verify a live session cannot be toggled or reconnected.
+The 52 project tests pass on
 Windows (one native skip) and macOS. Packaged Windows and Mac builds passed
 their GUI/codec smoke checks. The redesign preserves the existing audio path
 and its outstanding Mac Bluetooth quality limitations. Audio now defaults on,
-with an explicit off preference preserved. The audio control is one compact row;
-a short warning appears only when audio stalls. The palette uses black and
-charcoal, green for connected/positive actions, blue for waiting/information,
-and red for errors and the Disconnect/Stop server actions.
+with an explicit off preference preserved. Its compact control is read-only
+while connected and explains the disconnect requirement when clicked.
+A short warning appears when audio stalls. The palette uses black and charcoal,
+Apple-style blue for positive actions/status, and red for errors and the
+Disconnect/Stop server actions. Removing the universal QWidget stylesheet rule
+lets the native macOS/Windows scrollbar style paint the server list and logs;
+native Mac log renders were checked to confirm there are no fallback arrows.
 
 ## Acceptance procedure
 

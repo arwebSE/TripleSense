@@ -5,11 +5,10 @@ from __future__ import annotations
 import sys
 from datetime import datetime
 
-from PySide6.QtCore import QSize, Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QDesktopServices, QFont
+from PySide6.QtCore import QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QPalette
 from PySide6.QtWidgets import (
     QApplication,
-    QButtonGroup,
     QCheckBox,
     QDialog,
     QDialogButtonBox,
@@ -27,6 +26,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QStackedWidget,
     QSystemTrayIcon,
+    QToolTip,
     QVBoxLayout,
     QWidget,
 )
@@ -66,6 +66,30 @@ class PageStack(QStackedWidget):
         return page.minimumSizeHint() if page else super().minimumSizeHint()
 
 
+class AudioSwitch(QCheckBox):
+    lockedClick = Signal()
+
+    def setLocked(self, locked):
+        self.setProperty("locked", locked)
+        self.setAccessibleDescription(
+            "Disconnect to change audio" if locked else "Controller audio"
+        )
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.setCursor(
+            Qt.CursorShape.ForbiddenCursor if locked else Qt.CursorShape.PointingHandCursor
+        )
+
+    def nextCheckState(self):
+        if self.property("locked"):
+            QToolTip.showText(
+                self.mapToGlobal(self.rect().bottomLeft()), "Disconnect to change audio", self
+            )
+            self.lockedClick.emit()
+        else:
+            super().nextCheckState()
+
+
 class Window(QMainWindow):
     def __init__(self, root, *, smoke_test=False):
         from .app import AppEngine, Events
@@ -96,6 +120,19 @@ class Window(QMainWindow):
             self._perform(self.engine.initialize())
 
     def _build(self):
+        palette = self.palette()
+        for role, color in (
+            (QPalette.ColorRole.Window, "#0b0c0e"),
+            (QPalette.ColorRole.Base, "#0d0e10"),
+            (QPalette.ColorRole.Text, "#f0f1f3"),
+            (QPalette.ColorRole.WindowText, "#f0f1f3"),
+            (QPalette.ColorRole.Button, "#1c1e22"),
+            (QPalette.ColorRole.ButtonText, "#f0f1f3"),
+            (QPalette.ColorRole.Highlight, "#0a84ff"),
+            (QPalette.ColorRole.HighlightedText, "#ffffff"),
+        ):
+            palette.setColor(role, QColor(color))
+        self.setPalette(palette)
         container = QWidget()
         self.setCentralWidget(container)
         outer = QVBoxLayout(container)
@@ -104,26 +141,18 @@ class Window(QMainWindow):
         header = QHBoxLayout()
         title = label("DSShine", "brand")
         header.addWidget(title, 1)
-        self.roles = QButtonGroup(self)
-        self.server = button("Server", lambda: self._role_changed("game"))
-        self.client = button("Client", lambda: self._role_changed("controller"))
-        for role in (self.server, self.client):
-            role.setCheckable(True)
-            role.setObjectName("mode")
-            role.setFixedWidth(88)
-            self.roles.addButton(role)
-            header.addWidget(role)
-        self.server.setEnabled(sys.platform == "win32")
-        self.server.setToolTip("Server runs on the Windows PC with Sunshine")
-        self.client.setToolTip("Client runs on the computer connected to your DualSense")
+        self.mode_button = button("Change mode", self._open_modes)
+        header.addWidget(self.mode_button)
         outer.addLayout(header)
         self.role_caption = label("", "muted")
         outer.addWidget(self.role_caption)
         self.pages = PageStack()
         self.connection_page = self._connection_page()
         self.pair_page = self._pair_page()
+        self.mode_page = self._mode_page()
         self.pages.addWidget(self.connection_page)
         self.pages.addWidget(self.pair_page)
+        self.pages.addWidget(self.mode_page)
         self.pages.currentChanged.connect(self._fit_page)
         outer.addWidget(self.pages, 1)
         footer = QHBoxLayout()
@@ -134,11 +163,13 @@ class Window(QMainWindow):
         self._build_settings()
         self._build_logs()
         self.setStyleSheet("""
-            QWidget { background: #0b0c0e; color: #f0f1f3; font-size: 14px; }
+            QMainWindow, QDialog { background: #0b0c0e; color: #f0f1f3; }
+            QLabel, QPushButton, QLineEdit, QListWidget, QPlainTextEdit, QCheckBox {
+                font-size: 14px; }
             QLabel { background: transparent; }
             QLabel#brand { font-size: 28px; font-weight: 700; }
             QLabel#muted { color: #a1a5ad; }
-            QLabel[tone="success"], QLabel#muted[tone="success"] { color: #79e3a6; }
+            QLabel[tone="success"], QLabel#muted[tone="success"] { color: #64b5ff; }
             QLabel[tone="info"], QLabel#muted[tone="info"] { color: #91caff; }
             QLabel[tone="danger"], QLabel#muted[tone="danger"],
             QLabel#code[tone="danger"] { color: #ff858e; }
@@ -154,11 +185,11 @@ class Window(QMainWindow):
             QPushButton:hover { background: #2a2d32; }
             QPushButton:disabled { color: #686d76; border-color: #26292e; }
             QPushButton#mode { background: transparent; color: #a1a5ad; }
-            QPushButton#mode:checked { background: #282b30; color: #f0f1f3;
-                                      border-color: #737983; }
-            QPushButton#primary { background: #79e3a6; color: #10291a;
+            QPushButton#mode:checked { background: #171f29; color: #a5d3ff;
+                                      border-color: #0a84ff; }
+            QPushButton#primary { background: #0a84ff; color: #ffffff;
                                   border: none; font-weight: 600; }
-            QPushButton#primary:hover { background: #9eebbf; }
+            QPushButton#primary:hover { background: #409cff; }
             QPushButton#primary[intent="danger"] { background: #ff858e; color: #2d0c11; }
             QPushButton#primary[intent="danger"]:hover { background: #ffa1a8; }
             QPushButton#primary:disabled { background: #25282d; color: #777d86; }
@@ -170,8 +201,46 @@ class Window(QMainWindow):
             QCheckBox { spacing: 10px; }
             QCheckBox::indicator { width: 16px; height: 16px; border: 1px solid #777d87;
                                    border-radius: 4px; background: #0d0e10; }
-            QCheckBox::indicator:checked { background: #79e3a6; border-color: #79e3a6; }
+            QCheckBox::indicator:checked { background: #0a84ff; border-color: #0a84ff; }
+            QCheckBox[locked="true"] { color: #777d87; }
+            QCheckBox[locked="true"]::indicator { border-color: #40444c; }
+            QCheckBox[locked="true"]::indicator:checked { background: #315a80; }
         """)
+
+    def _mode_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+        heading = QHBoxLayout()
+        heading.addWidget(label("Choose a mode", "heading"), 1)
+        heading.addWidget(button("Back", self._back))
+        layout.addLayout(heading)
+        layout.addWidget(
+            label("Changing mode disconnects the current controller session.", "muted", wrap=True)
+        )
+        self.server = button(
+            "Server\nRuns Sunshine on a Windows PC", lambda: self._role_changed("game")
+        )
+        self.client = button(
+            "Client\nThe DualSense connects to this computer",
+            lambda: self._role_changed("controller"),
+        )
+        self.server.setAutoExclusive(True)
+        self.client.setAutoExclusive(True)
+        for choice in (self.server, self.client):
+            choice.setCheckable(True)
+            choice.setObjectName("mode")
+            choice.setMinimumHeight(68)
+            layout.addWidget(choice)
+        if sys.platform != "win32":
+            self.server.setText("Server\nRequires Windows and Sunshine")
+        layout.addStretch(1)
+        return page
+
+    def _open_modes(self):
+        self.pages.setCurrentWidget(self.mode_page)
+        self._fit_page()
 
     def _connection_page(self):
         page = QWidget()
@@ -199,10 +268,11 @@ class Window(QMainWindow):
         audio_layout = QHBoxLayout(self.audio_box)
         audio_layout.setContentsMargins(0, 2, 0, 2)
         audio_layout.setSpacing(12)
-        self.audio = QCheckBox("Controller audio")
+        self.audio = AudioSwitch("Controller audio")
         self.audio.setChecked(bool(self.preferences.get("audio", True)))
         self.audio.setToolTip("Forward the controller speaker, microphone and audio haptics.")
-        self.audio.toggled.connect(lambda value: self._perform(self.engine.set_audio(value)))
+        self.audio.toggled.connect(self._change_audio)
+        self.audio.lockedClick.connect(self._audio_locked_feedback)
         audio_layout.addWidget(self.audio)
         self.audio_status = label("", "muted", wrap=True)
         audio_layout.addWidget(self.audio_status, 1)
@@ -377,10 +447,15 @@ class Window(QMainWindow):
         self.centralWidget().layout().invalidate()
         self.centralWidget().layout().activate()
         pairing = self.pages.currentWidget() is getattr(self, "pair_page", None)
+        mode_selection = self.pages.currentWidget() is getattr(self, "mode_page", None)
         height = (
-            (570 if self.current_role == "controller" else 430)
-            if pairing
-            else (440 if self.current_role == "controller" else 404)
+            450
+            if mode_selection
+            else (
+                (570 if self.current_role == "controller" else 430)
+                if pairing
+                else (440 if self.current_role == "controller" else 404)
+            )
         )
         self.setMinimumHeight(height)
         self.resize(
@@ -419,16 +494,33 @@ class Window(QMainWindow):
             self.pair_button,
             self.generate,
             self.pair_submit,
-            self.audio,
-            self.server,
-            self.client,
         ):
             control.setEnabled(not self.busy)
+        locked = bool(self.engine.connection) or self.busy
+        was_locked = self.audio.property("locked")
+        self.audio.setLocked(locked)
+        if was_locked and not locked:
+            self.audio_status.hide()
         if sys.platform != "win32":
             self.server.setEnabled(False)
 
+    def _audio_locked_feedback(self):
+        self.audio_status.setText("Disconnect to change audio")
+        self._tone(self.audio_status, "info")
+        self.audio_status.show()
+
+    def _change_audio(self, enabled):
+        if self.engine.connection or self.busy:
+            self.audio.blockSignals(True)
+            self.audio.setChecked(bool(self.preferences.get("audio", True)))
+            self.audio.blockSignals(False)
+            self._audio_locked_feedback()
+            return
+        self._perform(self.engine.set_audio(enabled))
+
     def _role_changed(self, role):
         if role == self.current_role:
+            self._back()
             return
         self.current_role = role
         self.pages.setCurrentWidget(self.connection_page)
@@ -645,6 +737,12 @@ class Window(QMainWindow):
         self.details.appendPlainText(
             datetime.now().strftime("%H:%M:%S") + "  " + kind + ": " + message
         )
+        if kind == "error" and message == "Disconnect to change audio":
+            self.audio.blockSignals(True)
+            self.audio.setChecked(bool(self.preferences.get("audio", True)))
+            self.audio.blockSignals(False)
+            self._audio_locked_feedback()
+            return
         if kind == "error":
             self._tone(self.pair_error, "danger")
             self.status.setText("Connection needs attention")

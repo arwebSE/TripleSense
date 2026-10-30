@@ -1,7 +1,12 @@
+import json
 import os
+import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -105,3 +110,55 @@ class DesktopTests(unittest.TestCase):
             self.assertEqual(window.status.property("tone"), "danger")
         finally:
             window.engine.connection = None
+
+    def test_connected_audio_click_is_read_only_and_explains_why(self):
+        window = self.window
+        window.current_role = "controller"
+        window._show_role()
+        window.engine.connection = object()
+        try:
+            window.on_event("connected", "")
+            previous = window.audio.isChecked()
+            window.audio.click()
+            self.assertEqual(window.audio.isChecked(), previous)
+            self.assertEqual(window.audio_status.text(), "Disconnect to change audio")
+        finally:
+            window.engine.connection = None
+            window._update_actions()
+        self.assertFalse(window.audio.property("locked"))
+        self.assertTrue(window.audio_status.isHidden())
+
+    def test_mode_change_stops_current_session_and_persists_new_mode(self):
+        window = self.window
+        window.current_role = "game"
+        window.preferences["role"] = "game"
+        window._show_role()
+        receiver = SimpleNamespace(stop=AsyncMock())
+        window.engine.receiver = receiver
+        window.busy = True
+        window._update_actions()
+        self.assertTrue(window.mode_button.isEnabled())
+        window.mode_button.click()
+        self.assertIs(window.pages.currentWidget(), window.mode_page)
+        window.client.click()
+        self._wait_for_mode("controller")
+        receiver.stop.assert_awaited_once()
+        self.assertIsNone(window.engine.receiver)
+        self.assertTrue(window.role_caption.text().startswith("CLIENT"))
+        self.assertIs(window.pages.currentWidget(), window.connection_page)
+        settings = json.loads((window.root / "settings.json").read_text())
+        self.assertEqual(settings["role"], "controller")
+        if sys.platform == "win32":
+            window.mode_button.click()
+            window.server.click()
+            self._wait_for_mode("game")
+            self.assertTrue(window.role_caption.text().startswith("SERVER"))
+
+    def _wait_for_mode(self, role):
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline:
+            self.application.processEvents()
+            if self.window.preferences.get("role") == role and not self.window.busy:
+                return
+            time.sleep(0.01)
+        self.fail("Mode selection did not complete")
