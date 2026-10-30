@@ -76,6 +76,26 @@ The project suite currently contains 27 tests (the native scheduling test skips
 on Windows). The preceding Mac baseline ran 20 project and 331 inherited tests
 successfully (39 inherited native-AEC skips). Hardware records remain ignored.
 
+## Standalone desktop preview, 2026-10-30
+
+Windows x64 installer and macOS arm64 `.app` were built and launched from their
+bundles without a user-installed Python environment. Native window captures
+were inspected on both platforms. The Windows installer ran successfully,
+retained the existing USB/IP installation, created its Private/local-subnet
+firewall rules, and preserved the Sunshine controller setting backup.
+
+New integration tests exercise PIN pairing, wrong/expired/used codes, rejection
+of an unpaired TLS identity, native Sony USB identity and trigger payloads over
+the reverse connection, release on disconnect, crash-record validation, failed
+cleanup retry, and cancellation during attachment. Audio opt-in tests verify
+that the default app path does not arm microphone capture or queue PCM.
+
+Real desktop-app LAN pairing and the new packaged Mac Bluetooth source still
+need live acceptance. The Mac reported local-network failures during initial
+discovery; allowing the app in macOS Local Network settings is part of the
+pending user check. Earlier two-PC hardware and browser results remain valid
+for the prior CLI/SSH transport and do not by themselves validate this new path.
+
 ## Acceptance procedure
 
 1. Run `tools/verify_windows.py` with the verified driver installed. Require one

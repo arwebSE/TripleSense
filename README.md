@@ -3,6 +3,13 @@
 A Windows DualSense device bridge for **Sunshine + Moonlight**, targeting native
 controller input, adaptive triggers, and the audio path used for detailed haptics.
 
+**Desktop preview:** DSShine now has a standalone Windows/Mac app with LAN
+discovery, one-time PIN pairing, automatic reconnection and tray/menu-bar use.
+The Windows installer includes the free signed controller-bus driver and setup
+for Sunshine. Users do not need Python, SSH, manual certificates or prep commands.
+See [standalone setup](docs/STANDALONE.md). The CLI below remains available for
+development and diagnostics.
+
 The command is `dsshine`; the existing `ds5driver` command remains available.
 Repository: [arwebSE/DSShine](https://github.com/arwebSE/DSShine).
 
@@ -43,7 +50,7 @@ A HID-only DS5 emulation can forward trigger effects but lacks the USB audio
 function used for audio-driven haptics. Preserving that function provides the
 needed path; perceptual equivalence to a wired controller still needs testing.
 
-## Setup
+## Developer / CLI setup
 
 Windows x64 host, Python 3.11+, and a **standard DualSense over Bluetooth** on
 the controller PC. For the tested macOS Bluetooth source and its audio limits, see
@@ -57,7 +64,7 @@ fine; the host sees only the translated virtual USB controller.
 
 ```powershell
 uv venv --python 3.12
-uv sync --locked --extra controller --extra dev
+uv sync --locked --extra controller --extra dev --extra app
 .venv/Scripts/ds5driver.exe doctor
 .venv/Scripts/ds5driver.exe probe --seconds 3
 ```
