@@ -277,7 +277,8 @@ class Window(QMainWindow):
             label("Changing mode disconnects the current controller session.", "muted", wrap=True)
         )
         self.server = button(
-            "Server\nRuns Sunshine on a Windows PC", lambda: self._role_changed("game")
+            "Server\nMakes a DualSense available on this Windows PC",
+            lambda: self._role_changed("game"),
         )
         self.client = button(
             "Client\nThe DualSense connects to this computer",
@@ -291,7 +292,7 @@ class Window(QMainWindow):
             choice.setMinimumHeight(68)
             layout.addWidget(choice)
         if sys.platform != "win32":
-            self.server.setText("Server\nRequires Windows and Sunshine")
+            self.server.setText("Server\nRequires Windows")
         layout.addStretch(1)
         return page
 
@@ -453,10 +454,10 @@ class Window(QMainWindow):
             )
         )
         layout.addWidget(self.auto)
-        self.sunshine = button("Repair Windows setup…", self._repair_setup)
-        layout.addWidget(self.sunshine)
+        self.repair_button = button("Repair Windows setup…", self._repair_setup)
+        layout.addWidget(self.repair_button)
         self.setup_note = label(
-            "Repairs driver and firewall setup, and configures Sunshine.", "muted", wrap=True
+            "Repairs the controller driver and local-network access.", "muted", wrap=True
         )
         layout.addWidget(self.setup_note)
         layout.addWidget(button("Network permissions…", self._open_network_permissions))
@@ -492,13 +493,13 @@ class Window(QMainWindow):
             self.server.setChecked(server)
             self.client.setChecked(not server)
         self.role_caption.setText(
-            "SERVER · Windows PC running Sunshine"
+            "SERVER · Windows PC receiving the controller"
             if server
             else "CLIENT · Computer connected to your DualSense"
         )
         self.audio_box.setVisible(not server)
         self.auto.setVisible(not server)
-        self.sunshine.setVisible(server and sys.platform == "win32")
+        self.repair_button.setVisible(server and sys.platform == "win32")
         self.setup_note.setVisible(server and sys.platform == "win32")
         self.peer_label.setText("PAIRED CLIENT" if server else "PAIRED SERVER")
         self._update_peer()

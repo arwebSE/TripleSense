@@ -4,11 +4,11 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from dualsensedriver.app import AppEngine
 from dualsensedriver.lan import MAGIC, LanDiscovery
-from dualsensedriver.setup import disable_forwarding
+from dualsensedriver.setup import repair_windows
 
 
 class LanTests(unittest.TestCase):
@@ -55,11 +55,24 @@ class LanTests(unittest.TestCase):
         finally:
             client.close()
 
-    def test_sunshine_setup_preserves_other_settings_and_removes_duplicates(self):
-        text = "# settings\ncontroller = enabled\nfps = 60\ncontroller=enabled\n"
-        changed = disable_forwarding(text)
-        self.assertEqual(changed, "# settings\ncontroller = disabled\nfps = 60\n")
-        self.assertEqual(disable_forwarding(changed), changed)
+    def test_setup_repair_leaves_streaming_software_configuration_untouched(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            config = Path(temporary) / "Sunshine/config/sunshine.conf"
+            config.parent.mkdir(parents=True)
+            original = "controller = enabled\nfps = 60\n"
+            config.write_text(original)
+            with (
+                patch("dualsensedriver.setup.sys.platform", "win32"),
+                patch("dualsensedriver.setup.sys.frozen", True, create=True),
+                patch("dualsensedriver.setup.ctypes", MagicMock()),
+                patch("dualsensedriver.setup.find_usbip", return_value="usbip.exe"),
+                patch("dualsensedriver.setup.subprocess.run") as run,
+                patch.dict("os.environ", {"ProgramFiles": temporary, "SystemRoot": temporary}),
+            ):
+                repair_windows()
+            self.assertEqual(config.read_text(), original)
+            self.assertEqual(list(config.parent.iterdir()), [config])
+            self.assertEqual(run.call_count, 4)  # Only DSShine's two firewall rules.
 
 
 class RoamingTests(unittest.IsolatedAsyncioTestCase):

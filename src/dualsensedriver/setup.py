@@ -2,32 +2,14 @@
 
 from __future__ import annotations
 
-import configparser
 import ctypes
 import os
-import shutil
 import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 
 from .app_support import bundled_installer
 from .diagnostics import find_usbip
-
-
-def disable_forwarding(text):
-    lines, found = [], False
-    for line in text.splitlines():
-        key, separator, _ = line.partition("=")
-        if separator and key.strip().lower() == "controller":
-            if not found:
-                lines.append("controller = disabled")
-            found = True
-        else:
-            lines.append(line)
-    if not found:
-        lines.append("controller = disabled")
-    return "\n".join(lines) + "\n"
 
 
 def repair_windows():
@@ -73,31 +55,6 @@ def repair_windows():
             capture_output=True,
             check=True,
         )
-    config = Path(os.environ["ProgramFiles"]) / "Sunshine/config/sunshine.conf"
-    changed = False
-    if config.is_file():
-        text = config.read_text(encoding="utf-8-sig")
-        previous = "__missing__"
-        for line in text.splitlines():
-            key, separator, value = line.partition("=")
-            if separator and key.strip().lower() == "controller":
-                previous = value.strip()
-        if previous != "disabled":
-            state_path = Path(sys.executable).parent / "sunshine-setting.ini"
-            if not state_path.exists():
-                state = configparser.ConfigParser()
-                state["Sunshine"] = {"Previous": previous, "Config": str(config)}
-                with state_path.open("w", encoding="utf-8") as stream:
-                    state.write(stream)
-            backup = config.with_name(
-                config.name + ".dsshine-backup-" + datetime.now().strftime("%Y%m%d-%H%M%S")
-            )
-            shutil.copy2(config, backup)
-            temporary = config.with_suffix(".dsshine.tmp")
-            temporary.write_text(disable_forwarding(text), encoding="utf-8")
-            temporary.replace(config)
-            changed = True
-    return changed
 
 
 def request_repair():

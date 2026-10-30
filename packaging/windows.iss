@@ -5,7 +5,7 @@
 [Setup]
 AppId={{E0B8344E-9715-4E9F-B769-0E0C7B51D65A}
 AppName=DSShine
-AppVersion=0.4.6
+AppVersion=0.4.7
 AppPublisher=DSShine contributors
 AppPublisherURL=https://github.com/arwebSE/DSShine
 DefaultDirName={autopf}\DSShine
@@ -15,7 +15,7 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64os
 ArchitecturesInstallIn64BitMode=x64os
 OutputDir={#ProjectRoot}\dist
-OutputBaseFilename=DSShine-Setup-0.4.6-Windows-x64
+OutputBaseFilename=DSShine-Setup-0.4.7-Windows-x64
 Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern
@@ -27,7 +27,6 @@ Uninstallable=yes
 
 [Tasks]
 Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
-Name: sunshine; Description: "Let DSShine handle controllers (disable Sunshine controller forwarding)"; Flags: checkedonce
 
 [Files]
 Source: "{#BundleDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -90,25 +89,7 @@ begin
     RaiseException('Could not update Sunshine controller forwarding.');
 end;
 
-procedure CurStepChanged(CurStep: TSetupStep);
-var Config, State, Previous, Backup: String;
-begin
-  if (CurStep = ssPostInstall) and WizardIsTaskSelected('sunshine') then begin
-    Config := ExpandConstant('{pf64}\Sunshine\config\sunshine.conf');
-    State := ExpandConstant('{app}\sunshine-setting.ini');
-    if FileExists(Config) then begin
-      Previous := ControllerValue(Config);
-      if not FileExists(State) then begin
-        SetIniString('Sunshine', 'Previous', Previous, State);
-        SetIniString('Sunshine', 'Config', Config, State);
-      end;
-      Backup := Config + '.dsshine-backup-' + GetDateTimeString('yyyymmdd-hhnnss', '-', ':');
-      if not FileCopy(Config, Backup, True) then RaiseException('Could not back up Sunshine configuration.');
-      SetControllerValue(Config, 'disabled');
-    end;
-  end;
-end;
-
+// Preserve uninstall restoration for settings changed by older previews.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var Config, State, Previous, LoginCommand: String;
 begin

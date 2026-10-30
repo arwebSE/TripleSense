@@ -36,7 +36,7 @@ incoming Mac listener or SSH forward is involved.
 
 PIN pairing on TCP 3251 uses SPAKE2 plus authenticated credential transfer and
 mutual key confirmation. The code is short-lived, rate-limited and single-use.
-Discovery sees `_dsshine._tcp` and `_nvstream._tcp` advertisements but does not
+Discovery sees `_dsshine._tcp` advertisements but does not
 treat discovery data as proof of identity. The desktop app does not borrow
 Moonlight credentials or join Moonlight's streaming connection.
 
@@ -44,7 +44,7 @@ The app owns attachment/detachment directly, without Sunshine application
 hooks. A private ownership record supports recovery after an app crash. Port
 and unique serial checks still apply before detach. Quit waits for a pending
 attach command to finish recording ownership, then cleans up that device.
-Experimental controller audio is opt-in; its disabled path does not arm the
+Experimental controller audio defaults on; its disabled path does not arm the
 Bluetooth microphone or queue audio output.
 
 ## Ownership and security

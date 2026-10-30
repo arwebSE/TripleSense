@@ -1,12 +1,12 @@
 # DSShine
 
-A Windows DualSense device bridge for **Sunshine + Moonlight**, targeting native
+A streaming-independent Windows DualSense device bridge, targeting native
 controller input, adaptive triggers, and the audio path used for detailed haptics.
 
 **Desktop preview:** DSShine now has a standalone Windows/Mac app with LAN
 discovery, one-time PIN pairing, automatic reconnection and safe shutdown when the main window closes.
 The Windows installer includes the free signed controller-bus driver and setup
-for Sunshine. Users do not need Python, SSH, manual certificates or prep commands.
+for local-network access. Users do not need Python, SSH, manual certificates or prep commands.
 See [standalone setup](STANDALONE.md). The CLI below remains available for
 development and diagnostics.
 

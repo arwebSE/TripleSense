@@ -1,17 +1,19 @@
 # Standalone app
 
-DSShine handles the whole controller alongside stock Sunshine and Moonlight.
+DSShine forwards a whole DualSense independently of streaming software.
 Install it on the Windows game PC and on the computer with the Bluetooth
-DualSense. Moonlight continues to handle video, ordinary game audio, keyboard
-and mouse. No paid virtual-controller driver or Sunshine fork is required.
+DualSense. Your streaming app handles video, ordinary game audio, keyboard
+and mouse separately. No streaming app or paid controller driver is required.
+The packaged apps include Python and their runtime libraries: users do not need
+Python, Git, SSH or developer tools. Windows setup installs the included signed
+USB/IP driver and needs administrator permission. The current packages target
+Windows x64 and Apple Silicon Macs.
 
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.4.6-Windows-x64.exe`. The installer includes
-   the signed USB/IP driver, adds app-specific local-subnet firewall rules,
-   and offers to disable Sunshine controller forwarding. It backs up the
-   Sunshine setting and does not restart Windows or Sunshine automatically.
-   Restart Sunshine after changing its controller setting.
+1. **Windows:** run `DSShine-Setup-0.4.7-Windows-x64.exe`. The installer includes
+   the signed USB/IP driver and adds app-specific local-subnet firewall rules.
+   It does not change your streaming software or restart Windows automatically.
 2. **Mac:** open `DSShine-macOS.dmg` and drag DSShine into Applications,
    and open it. Allow local-network access if macOS asks. The current preview
    is locally signed, not Developer ID signed/notarized; a downloaded preview
@@ -22,14 +24,15 @@ and mouse. No paid virtual-controller driver or Sunshine fork is required.
    needed once; identities are exchanged and stored automatically.
 5. Pair the DualSense to the Mac over Bluetooth and turn it on. Exit Steam on
    the physical-controller computer. Stream an ordinary Desktop/game entry
-   through Moonlight. The old CLI Sunshine preparation hooks are unnecessary.
+   through your preferred streaming app, if you use one.
 
-The Windows installer offers to disable ordinary Sunshine controller
-forwarding so games see one controller. If using the portable app or a Sunshine
-installation in a different location, configure its controller setting once.
-**Settings → Repair Windows setup** repairs a standard installation without a
-terminal. DSShine does not hide the physical pad
-from macOS. Moonlight may still use it for local UI navigation.
+Disable your streaming app's controller forwarding if it would expose a second
+controller on the game PC. For example, with Sunshine/Moonlight, disable
+Sunshine's controller forwarding in its configuration. DSShine does not change
+that setting automatically. Other streaming software has not yet been validated.
+**Settings → Repair Windows setup** repairs DSShine's driver and firewall rules
+without a terminal. DSShine does not hide the physical controller from macOS;
+a streaming client may still use it for local UI navigation.
 
 ## Daily use
 
@@ -56,12 +59,12 @@ hover over it to see that a disconnect is needed.
 Audio status reports Bluetooth output stalls instead of claiming audio is healthy.
 
 With this option off, the app does not arm the microphone or send Bluetooth
-audio packets. Ordinary game sound still plays through Moonlight.
+audio packets. Ordinary game sound still plays through your streaming app.
 
 ## Pairing and networking
 
-DSShine discovers both DSShine and Sunshine advertisements on the LAN. A
-Sunshine-only advertisement is labelled with a reminder to open DSShine there.
+DSShine discovers its own servers on the LAN; no streaming app discovery or
+pairing records are required.
 The Windows app listens for the controller connection; the Mac makes outgoing
 connections, so it needs no incoming firewall exception or SSH login.
 
@@ -97,7 +100,7 @@ Logs contain connection diagnostics, not microphone recordings.
   and allow DSShine.
 - **Windows refuses a connection:** click **Settings → Repair Windows setup**
   and accept its administrator prompt. This repairs the driver and local-subnet
-  firewall rules and configures Sunshine forwarding.
+  firewall rules only.
 - **Controller asleep:** press PS. DSShine waits for it and reconnects.
 - **Steam owns the controller:** close Steam on the Mac. Steam can remain open
   on the Windows game PC.
@@ -112,11 +115,11 @@ competing controller instance.
 **Change mode** on Windows opens explicit **Server** and **Client** choices.
 Stop the server or disconnect before changing modes; hover over the disabled
 button for help. The macOS app is Client-only and has no mode selector.
-Server runs on the Windows Sunshine PC; Client runs beside the controller.
+Server runs on the Windows game PC; Client runs beside the controller.
 macOS and Linux Server support is [planned](ROADMAP.md). The connection view
 shows status, the paired computer, controller audio on the Client, and the main
 connection action. **Stop server** stops accepting the controller; **Disconnect**
-disconnects the Client. Neither action stops the Moonlight video stream.
+disconnects the Client. Neither action stops your streaming software.
 
 Pairing has its own screen. Discovered servers are listed by name and address;
 there is no dropdown. Settings and Logs open in separate windows. The connection

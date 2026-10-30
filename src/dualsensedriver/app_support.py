@@ -13,7 +13,6 @@ import sys
 from pathlib import Path
 
 SERVICE = "_dsshine._tcp.local."
-SUNSHINE_SERVICE = "_nvstream._tcp.local."
 DRIVER_HASH = "38cad6d4432b52d5bb9409d9ad03b72fdffc4ada4cd3a48fbeca1a2752a8518a"
 
 
@@ -84,9 +83,7 @@ class Discovery:
         self.zeroconf = self.browser = None
         try:
             self.zeroconf = Zeroconf(ip_version=IPVersion.V4Only)
-            self.browser = ServiceBrowser(
-                self.zeroconf, [SERVICE, SUNSHINE_SERVICE], handlers=[self._changed]
-            )
+            self.browser = ServiceBrowser(self.zeroconf, [SERVICE], handlers=[self._changed])
         except OSError:
             pass  # Broadcast discovery remains available without Bonjour.
         self.advertisement = None

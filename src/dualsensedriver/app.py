@@ -296,12 +296,11 @@ def main(argv=None):
         application = QApplication(sys.argv[:1])
         application.setWindowIcon(QIcon(str(Path(__file__).with_name("assets") / "dsshine.png")))
         try:
-            changed = repair_windows()
+            repair_windows()
             QMessageBox.information(
                 None,
                 "DSShine setup repaired",
-                "Driver and local-network access are ready."
-                + (" Restart Sunshine to apply the controller setting." if changed else ""),
+                "Driver and local-network access are ready.",
             )
             return 0
         except Exception as exc:

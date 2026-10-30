@@ -164,8 +164,8 @@ def main():
                 "CFBundleIdentifier": "me.dsshine.app",
                 "CFBundleVersion": __version__,
                 "CFBundleShortVersionString": __version__,
-                "NSLocalNetworkUsageDescription": "Find and connect to your DSShine game PC.",
-                "NSBonjourServices": ["_dsshine._tcp", "_nvstream._tcp"],
+                "NSLocalNetworkUsageDescription": "Find and connect to your DSShine server.",
+                "NSBonjourServices": ["_dsshine._tcp"],
                 "NSBluetoothAlwaysUsageDescription": "Connect your DualSense to your game PC.",
                 "NSMicrophoneUsageDescription": (
                     "Forward the controller microphone when controller audio is enabled."
