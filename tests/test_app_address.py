@@ -59,6 +59,16 @@ class DesktopTests(unittest.TestCase):
         self.assertFalse(event.isAccepted())
         self.assertTrue(window.isVisible())  # Remain visible while shutdown cleans up.
 
+    def test_server_address_links_copy_only_the_clicked_ip(self):
+        window = self.window
+        window.current_role = "game"
+        window._show_pair_page()
+        self.assertEqual(window.pair_addresses.textFormat(), Qt.TextFormat.RichText)
+        window.pair_addresses.linkActivated.emit("100.97.43.25")
+        self.assertEqual(self.application.clipboard().text(), "100.97.43.25")
+        window.addresses.linkActivated.emit("192.168.1.190")
+        self.assertEqual(self.application.clipboard().text(), "192.168.1.190")
+
     def test_main_window_has_no_scroll_container_or_dropdown(self):
         self.assertEqual(self.window.findChildren(QScrollArea), [])
         self.assertEqual(self.window.findChildren(QComboBox), [])

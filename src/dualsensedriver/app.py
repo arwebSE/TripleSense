@@ -48,6 +48,7 @@ class AppEngine:
         self.operation = asyncio.Lock()
         self.receiver = self.connection = self.pairing = self.expiry = None
         self.discovery = None
+        self.discovery_scanning = False
         self.probe_task = None
         saved_servers.migrate(self.preferences)
 
@@ -88,6 +89,7 @@ class AppEngine:
             self.discovery = await asyncio.to_thread(
                 Discovery, self.notify, self.preferences["computer_id"]
             )
+            await asyncio.to_thread(self.discovery.set_scanning, self.discovery_scanning)
         except OSError:
             self.notify("discovery_unavailable", None)
         await self.set_role(
@@ -206,6 +208,7 @@ class AppEngine:
             profile["manual_address"] = manual
             saved_servers.remember(self.preferences, profile)
             self.save()
+            await self.set_discovery_scanning(False)
             self.notify("servers_changed", None)
             self.notify("paired", profile["name"])
         await self.connect()
@@ -320,6 +323,11 @@ class AppEngine:
     async def rescan(self):
         if self.discovery:
             await asyncio.to_thread(self.discovery.scan)
+
+    async def set_discovery_scanning(self, enabled):
+        self.discovery_scanning = enabled
+        if self.discovery:
+            await asyncio.to_thread(self.discovery.set_scanning, enabled)
 
     async def set_audio(self, enabled):
         async with self.operation:

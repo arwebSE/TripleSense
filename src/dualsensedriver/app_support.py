@@ -72,18 +72,18 @@ def local_addresses():
 
 class Discovery:
     def __init__(self, notify, identity):
-        from zeroconf import IPVersion, ServiceBrowser, Zeroconf
+        from zeroconf import IPVersion, Zeroconf
 
         from .lan import LanDiscovery
 
         self.notify = notify
         self.identity = identity
         self.service_ids = {}
-        self.lan = LanDiscovery(notify, identity)
+        self.lan = LanDiscovery(notify, identity, scanning=False)
+        self.scanning = False
         self.zeroconf = self.browser = None
         try:
             self.zeroconf = Zeroconf(ip_version=IPVersion.V4Only)
-            self.browser = ServiceBrowser(self.zeroconf, [SERVICE], handlers=[self._changed])
         except OSError:
             pass  # Broadcast discovery remains available without Bonjour.
         self.advertisement = None
@@ -91,6 +91,8 @@ class Discovery:
     def _changed(self, zeroconf, service_type, name, state_change):
         from zeroconf import ServiceStateChange
 
+        if not self.scanning:
+            return
         if state_change is ServiceStateChange.Removed:
             self.notify("computer_removed", self.service_ids.pop(name, name))
             return
@@ -143,6 +145,7 @@ class Discovery:
             self.advertisement = None
 
     def close(self):
+        self.set_scanning(False)
         self.withdraw()
         self.lan.close()
         if self.browser:
@@ -152,6 +155,19 @@ class Discovery:
 
     def scan(self):
         self.lan.scan()
+
+    def set_scanning(self, enabled):
+        from zeroconf import ServiceBrowser
+
+        if enabled == self.scanning:
+            return
+        self.scanning = enabled
+        self.lan.set_scanning(enabled)
+        if enabled and self.zeroconf:
+            self.browser = ServiceBrowser(self.zeroconf, [SERVICE], handlers=[self._changed])
+        elif self.browser:
+            self.browser.cancel()
+            self.browser = None
 
 
 def bundled_installer():
