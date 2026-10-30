@@ -3,9 +3,9 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "DSShine"
-version = "0.4.15"
-description = "Full DualSense USB device bridge alongside Sunshine and Moonlight"
+name = "TripleSense"
+version = "0.4.16"
+description = "Share a DualSense controller between computers, including audio and microphone"
 requires-python = ">=3.11"
 license = "MIT"
 license-files = [
@@ -23,10 +23,12 @@ app = ["PySide6-Essentials>=6.8,<7", "spake2>=0.9,<1", "zeroconf>=0.148,<1"]
 build = ["pyinstaller>=6.16,<7"]
 
 [project.scripts]
+triplesense = "dualsensedriver.cli:main"
 dsshine = "dualsensedriver.cli:main"
 ds5driver = "dualsensedriver.cli:main"
 
 [project.gui-scripts]
+triplesense-app = "dualsensedriver.app:main"
 dsshine-app = "dualsensedriver.app:main"
 
 [tool.setuptools]

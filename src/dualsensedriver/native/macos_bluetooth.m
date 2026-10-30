@@ -1,4 +1,4 @@
-// DSShine's owned Bluetooth HID transport. No firmware or pairing writes.
+// TripleSense's owned Bluetooth HID transport. No firmware or pairing writes.
 // IPC: little-endian uint32 length, uint8 kind, uint32 request, payload.
 // Commands: 1=GET_FEATURE, 2=OUTPUT, 3=SET_FEATURE, 4=CLOSE.
 // Responses: 0=ready, 1=feature, 2/3=ack, 16=input, 255=error.
@@ -78,7 +78,7 @@ static void reply(uint8_t kind, uint32_t request, NSData *data) {
 }
 - (void)centralManagerDidUpdateState:(CBCentralManager *)central {
     if (central.state == CBManagerStateUnauthorized) {
-        [self fail:@"Allow Bluetooth access for DSShine in macOS Settings."]; return;
+        [self fail:@"Allow Bluetooth access for TripleSense in macOS Settings."]; return;
     }
     if (central.state != CBManagerStatePoweredOn || self.starting) return;
     self.starting = YES;
@@ -221,7 +221,7 @@ static void reply(uint8_t kind, uint32_t request, NSData *data) {
 }
 @end
 
-Transport *DSShineStartTransport(NSString *address) {
+Transport *TripleSenseStartTransport(NSString *address) {
     Transport *transport = Transport.new;
     transport.address = address;
     transport.controlQueue = NSMutableArray.new; transport.outputQueue = NSMutableArray.new;
@@ -248,11 +248,11 @@ Transport *DSShineStartTransport(NSString *address) {
 
 int main(int argc, char **argv) { @autoreleasepool {
     if (argc != 2) return 2;
-    if (!strcmp(argv[1], "--version")) { puts("DSShine native Bluetooth transport 1"); return 0; }
+    if (!strcmp(argv[1], "--version")) { puts("TripleSense native Bluetooth transport 1"); return 0; }
     signal(SIGPIPE, SIG_IGN);
     [NSApplication sharedApplication]; [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
     [NSApp finishLaunching];
-    Transport *transport = DSShineStartTransport([NSString stringWithUTF8String:argv[1]]);
+    Transport *transport = TripleSenseStartTransport([NSString stringWithUTF8String:argv[1]]);
     [NSApp run]; (void)transport;
     return 0;
 }}

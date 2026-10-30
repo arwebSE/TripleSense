@@ -4,18 +4,19 @@
 
 [Setup]
 AppId={{E0B8344E-9715-4E9F-B769-0E0C7B51D65A}
-AppName=DSShine
-AppVersion=0.4.15
-AppPublisher=DSShine contributors
-AppPublisherURL=https://github.com/arwebSE/DSShine
-DefaultDirName={autopf}\DSShine
-DefaultGroupName=DSShine
-UninstallDisplayIcon={app}\DSShine.exe
+AppName=TripleSense
+AppVersion=0.4.16
+AppPublisher=TripleSense contributors
+AppPublisherURL=https://github.com/arwebSE/TripleSense
+DefaultDirName={autopf}\TripleSense
+DefaultGroupName=TripleSense
+UsePreviousGroup=no
+UninstallDisplayIcon={app}\TripleSense.exe
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64os
 ArchitecturesInstallIn64BitMode=x64os
 OutputDir={#ProjectRoot}\dist
-OutputBaseFilename=DSShine-Setup-0.4.15-Windows-x64
+OutputBaseFilename=TripleSense-Setup-0.4.16-Windows-x64
 Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern
@@ -32,20 +33,28 @@ Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
 Source: "{#BundleDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\DSShine"; Filename: "{app}\DSShine.exe"; IconFilename: "{app}\_internal\dualsensedriver\assets\dsshine.ico"; AppUserModelID: "me.dsshine.app"
-Name: "{autodesktop}\DSShine"; Filename: "{app}\DSShine.exe"; IconFilename: "{app}\_internal\dualsensedriver\assets\dsshine.ico"; Tasks: desktopicon; AppUserModelID: "me.dsshine.app"
+Name: "{group}\TripleSense"; Filename: "{app}\TripleSense.exe"; IconFilename: "{app}\_internal\dualsensedriver\assets\dsshine.ico"; AppUserModelID: "me.dsshine.app"
+Name: "{autodesktop}\TripleSense"; Filename: "{app}\TripleSense.exe"; IconFilename: "{app}\_internal\dualsensedriver\assets\dsshine.ico"; Tasks: desktopicon; AppUserModelID: "me.dsshine.app"
+
+[InstallDelete]
+Type: files; Name: "{app}\DSShine.exe"
+Type: files; Name: "{group}\DSShine.lnk"
+Type: files; Name: "{commonprograms}\DSShine\DSShine.lnk"
+Type: files; Name: "{autodesktop}\DSShine.lnk"
 
 [Run]
-Filename: "{app}\_internal\installers\USBip-0.9.8.1-x64.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"; StatusMsg: "Installing the controller driver…"; Check: NeedsControllerDriver; Flags: waituntilterminated
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""DSShine - Controller"""; Flags: runhidden
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""DSShine - Discovery"""; Flags: runhidden
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""DSShine - Controller"" dir=in action=allow program=""{app}\DSShine.exe"" protocol=TCP localport=3250-3251 profile=private,public remoteip=localsubnet,100.64.0.0/10"; Flags: runhidden
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""DSShine - Discovery"" dir=in action=allow program=""{app}\DSShine.exe"" protocol=UDP localport=5353,3252 profile=private,public remoteip=localsubnet,100.64.0.0/10"; Flags: runhidden
-Filename: "{app}\DSShine.exe"; Description: "Open DSShine"; Flags: postinstall nowait skipifsilent runasoriginaluser
+Filename: "{app}\_internal\installers\USBip-0.9.8.1-x64.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"; StatusMsg: "Installing the controller driver…"; Check: NeedsControllerDriver; Flags: waituntilterminated
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TripleSense - Controller"""; Flags: runhidden
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TripleSense - Discovery"""; Flags: runhidden
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TripleSense - Controller"" dir=in action=allow program=""{app}\TripleSense.exe"" protocol=TCP localport=3250-3251 profile=private,public remoteip=localsubnet,100.64.0.0/10"; Flags: runhidden
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""TripleSense - Discovery"" dir=in action=allow program=""{app}\TripleSense.exe"" protocol=UDP localport=5353,3252 profile=private,public remoteip=localsubnet,100.64.0.0/10"; Flags: runhidden
+Filename: "{app}\TripleSense.exe"; Description: "Open TripleSense"; Flags: postinstall nowait skipifsilent runasoriginaluser
 
 [UninstallRun]
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""DSShine - Controller"""; Flags: runhidden; RunOnceId: RemoveControllerFirewallRule
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""DSShine - Discovery"""; Flags: runhidden; RunOnceId: RemoveDiscoveryFirewallRule
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TripleSense - Controller"""; Flags: runhidden; RunOnceId: RemoveControllerFirewallRule
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""TripleSense - Discovery"""; Flags: runhidden; RunOnceId: RemoveDiscoveryFirewallRule
 
 [Code]
 function NeedsControllerDriver: Boolean;
@@ -101,9 +110,9 @@ begin
       SetControllerValue(Config, Previous);
     DeleteFile(State);
     if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run',
-      'DSShine', LoginCommand) then begin
-      if Pos(Lowercase(ExpandConstant('{app}\DSShine.exe')), Lowercase(LoginCommand)) > 0 then
-        RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'DSShine');
+      'TripleSense', LoginCommand) then begin
+      if Pos(Lowercase(ExpandConstant('{app}\TripleSense.exe')), Lowercase(LoginCommand)) > 0 then
+        RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'TripleSense');
     end;
   end;
 end;

@@ -95,7 +95,7 @@ class LanTests(unittest.TestCase):
                 repair_windows()
             self.assertEqual(config.read_text(), original)
             self.assertEqual(list(config.parent.iterdir()), [config])
-            self.assertEqual(run.call_count, 4)  # Only DSShine's two firewall rules.
+            self.assertEqual(run.call_count, 4)  # Only TripleSense's two firewall rules.
             additions = [call.args[0] for call in run.call_args_list if "add" in call.args[0]]
             self.assertIn("remoteip=localsubnet,100.64.0.0/10", additions[0])
             self.assertIn("remoteip=localsubnet,100.64.0.0/10", additions[1])

@@ -23,6 +23,7 @@ def app_directory():
         root = Path.home() / "Library" / "Application Support"
     else:
         root = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    # Keep the existing private data directory so renaming preserves pairings.
     folder = root / "DSShine"
     folder.mkdir(parents=True, exist_ok=True, mode=0o700)
     return folder
@@ -198,17 +199,21 @@ def set_launch_at_login(enabled):
         with winreg.CreateKey(
             winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run"
         ) as key:
+            try:
+                winreg.DeleteValue(key, "DSShine")
+            except FileNotFoundError:
+                pass
             if enabled:
                 winreg.SetValueEx(
                     key,
-                    "DSShine",
+                    "TripleSense",
                     0,
                     winreg.REG_SZ,
                     subprocess.list2cmdline([sys.executable]),
                 )
             else:
                 try:
-                    winreg.DeleteValue(key, "DSShine")
+                    winreg.DeleteValue(key, "TripleSense")
                 except FileNotFoundError:
                     pass
     elif sys.platform == "darwin":

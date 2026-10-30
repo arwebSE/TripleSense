@@ -1,14 +1,16 @@
-# DSShine
+# TripleSense
+
+Previously named DSShine. Updates keep your settings and saved pairings.
 
 Use your DualSense with a gaming computer even when the controller is connected
 to a different computer.
-DSShine sends the controller connection between the two computers, including
+TripleSense sends the controller connection between the two computers, including
 adaptive triggers, vibration and touchpad input.
 
 Use it alongside your preferred game-streaming app. Sunshine and Moonlight
-are our tested setup, but are not required by DSShine.
+are our tested setup, but are not required by TripleSense.
 
-**[Download DSShine](https://github.com/arwebSE/DSShine/releases)** ·
+**[Download TripleSense](https://github.com/arwebSE/TripleSense/releases)** ·
 [Setup and troubleshooting](docs/STANDALONE.md)
 
 > **Preview release:** controller input and adaptive triggers have been tested.
@@ -34,9 +36,9 @@ the controller driver. macOS and Linux gaming-PC support is planned.
 
 ## Get connected
 
-1. **On Windows:** download and run the Windows installer, then open DSShine
+1. **On Windows:** download and run the Windows installer, then open TripleSense
    in **Server** mode.
-2. **On the controller computer:** install DSShine and use **Client** mode.
+2. **On the controller computer:** install TripleSense and use **Client** mode.
    On macOS, drag the app from the disk image into Applications; it opens as
    Client automatically. Allow Bluetooth/local-network access when asked.
 3. **On Windows:** Server shows a four-digit pairing code automatically.
@@ -54,11 +56,11 @@ The Client keeps a saved-server list with online/offline indicators. Use
 **Add server** to pair another computer, or **Remove** to forget an old one.
 
 If your streaming app also forwards controllers, disable that feature if it
-causes duplicate input. DSShine does not change your streaming app's settings.
+causes duplicate input. TripleSense does not change your streaming app's settings.
 
 ## Everyday use
 
-Open DSShine on both computers and turn on your controller. It reconnects
+Open TripleSense on both computers and turn on your controller. It reconnects
 automatically. Minimize the window to keep playing; closing it disconnects the
 controller and quits the app.
 

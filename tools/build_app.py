@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def notices():
     destination = ROOT / "build" / "app-notices"
     destination.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(ROOT / "LICENSE", destination / "DSShine-LICENSE.txt")
+    shutil.copy2(ROOT / "LICENSE", destination / "TripleSense-LICENSE.txt")
     shutil.copy2(ROOT / "THIRD_PARTY_NOTICES.md", destination / "THIRD_PARTY_NOTICES.md")
     for path in (ROOT / "packaging").glob("Qt-*.txt"):
         shutil.copy2(path, destination / path.name)
@@ -100,7 +100,7 @@ def main():
         "--add-data",
         str(ROOT / "src/dualsensedriver/assets") + ":dualsensedriver/assets",
         "--name",
-        "DSShine",
+        "TripleSense",
         "--distpath",
         str(ROOT / "dist"),
         "--workpath",
@@ -153,7 +153,7 @@ def main():
     if sys.platform == "darwin":
         # Native privacy metadata and local ad-hoc signing. Developer ID signing
         # and notarization are separate release steps, never simulated here.
-        bundle = ROOT / "dist" / "DSShine.app"
+        bundle = ROOT / "dist" / "TripleSense.app"
         import plistlib
 
         info_path = bundle / "Contents" / "Info.plist"
@@ -164,7 +164,7 @@ def main():
                 "CFBundleIdentifier": "me.dsshine.app",
                 "CFBundleVersion": __version__,
                 "CFBundleShortVersionString": __version__,
-                "NSLocalNetworkUsageDescription": "Find and connect to your DSShine server.",
+                "NSLocalNetworkUsageDescription": "Find and connect to your TripleSense server.",
                 "NSBonjourServices": ["_dsshine._tcp"],
                 "NSBluetoothAlwaysUsageDescription": "Connect your DualSense to your game PC.",
                 "NSMicrophoneUsageDescription": (
@@ -204,7 +204,7 @@ def main():
                 "--sequesterRsrc",
                 "--keepParent",
                 str(bundle),
-                str(ROOT / "dist" / "DSShine-macOS.zip"),
+                str(ROOT / "dist" / "TripleSense-macOS.zip"),
             ],
             check=True,
         )
@@ -212,20 +212,20 @@ def main():
         if image_root.exists():
             shutil.rmtree(image_root)
         image_root.mkdir(parents=True)
-        shutil.copytree(bundle, image_root / "DSShine.app", symlinks=True)
+        shutil.copytree(bundle, image_root / "TripleSense.app", symlinks=True)
         (image_root / "Applications").symlink_to("/Applications", target_is_directory=True)
         subprocess.run(
             [
                 "hdiutil",
                 "create",
                 "-volname",
-                "DSShine",
+                "TripleSense",
                 "-srcfolder",
                 str(image_root),
                 "-format",
                 "UDZO",
                 "-ov",
-                str(ROOT / "dist" / "DSShine-macOS.dmg"),
+                str(ROOT / "dist" / "TripleSense-macOS.dmg"),
             ],
             check=True,
         )
@@ -240,16 +240,16 @@ def main():
         subprocess.run(
             [
                 compiler,
-                "/DBundleDir=" + str(ROOT / "dist" / "DSShine"),
+                "/DBundleDir=" + str(ROOT / "dist" / "TripleSense"),
                 "/DProjectRoot=" + str(ROOT),
                 str(ROOT / "packaging" / "windows.iss"),
             ],
             check=True,
         )
     executable = (
-        ROOT / "dist" / "DSShine" / "DSShine.exe"
+        ROOT / "dist" / "TripleSense" / "TripleSense.exe"
         if sys.platform == "win32"
-        else ROOT / "dist" / "DSShine.app/Contents/MacOS/DSShine"
+        else ROOT / "dist" / "TripleSense.app/Contents/MacOS/TripleSense"
     )
     # Validate the frozen dependency stack and GUI, not just PyInstaller's exit
     # status. No hardware is opened; each smoke run uses isolated temporary data.
@@ -282,8 +282,8 @@ def main():
                 shell.get("app_id") != "me.dsshine.app"
                 or not shell.get("relaunch_icon", "").endswith("dsshine.ico,0")
                 or not Path(shell["relaunch_icon"][:-2]).is_file()
-                or "DSShine.exe" not in shell.get("relaunch_command", "")
-                or shell.get("display_name") != "DSShine"
+                or "TripleSense.exe" not in shell.get("relaunch_command", "")
+                or shell.get("display_name") != "TripleSense"
             ):
                 raise RuntimeError("The packaged taskbar icon/relaunch properties are incorrect")
 

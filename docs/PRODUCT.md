@@ -1,6 +1,6 @@
 # Product target
 
-DSShine is an open-source DualSense connection between computers. The computer
+TripleSense is an open-source DualSense connection between computers. The computer
 beside the controller runs Client; the gaming computer runs Server. It works
 independently of the video-streaming app. A Mac is optional.
 
@@ -24,8 +24,8 @@ forwarding remain work to implement and validate.
 - LAN and private VPN connections, including Tailscale and NetBird. VPN access
   retains paired authentication; discovery must not silently replace a VPN address.
 
-Audio transport exists, but continuous Mac Bluetooth audio currently drops out.
-Reliable audio is required for the product; it is not an excluded feature.
+The native Mac Bluetooth audio path has passed live speaker and microphone
+signal tests. Extended mixed haptics/audio sessions still need validation.
 Current measurements and failed approaches are recorded in
 [the Bluetooth audio investigation](BLUETOOTH_AUDIO.md).
 
@@ -41,7 +41,7 @@ two-finger scrolling. Consume menu/keyboard/mouse-mode combinations before
 forwarding input to games; closing a menu restores normal controller input.
 These features are planned, not implemented.
 Touchpad mouse control is explicitly deferred to a future update; Bluetooth
-audio is the current release priority.
+audio reliability remains a release requirement.
 
 ## Release priorities
 

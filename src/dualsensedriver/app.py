@@ -1,4 +1,4 @@
-"""DSShine desktop app. Python and the controller libraries ship in the bundle."""
+"""TripleSense desktop app. Python and the controller libraries ship in the bundle."""
 
 from __future__ import annotations
 
@@ -385,7 +385,7 @@ from .desktop import Window  # noqa: E402
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="DSShine desktop app")
+    parser = argparse.ArgumentParser(description="TripleSense desktop app")
     parser.add_argument("--data-dir", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--smoke-test", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--background", action="store_true", help=argparse.SUPPRESS)
@@ -413,12 +413,12 @@ def main(argv=None):
             repair_windows()
             QMessageBox.information(
                 None,
-                "DSShine setup repaired",
+                "TripleSense setup repaired",
                 "Driver and local-network access are ready.",
             )
             return 0
         except Exception as exc:
-            QMessageBox.warning(None, "DSShine setup needs attention", str(exc))
+            QMessageBox.warning(None, "TripleSense setup needs attention", str(exc))
             return 1
     if args.smoke_test:
         try:
@@ -436,8 +436,8 @@ def main(argv=None):
             return 1
     application = QApplication(sys.argv[:1])
     application.setWindowIcon(QIcon(str(Path(__file__).with_name("assets") / "dsshine.png")))
-    application.setApplicationName("DSShine")
-    application.setOrganizationName("DSShine")
+    application.setApplicationName("TripleSense")
+    application.setOrganizationName("TripleSense")
     application.setQuitOnLastWindowClosed(False)
     application.setFont(QFont("Segoe UI" if sys.platform == "win32" else ".AppleSystemUIFont", 10))
     root = args.data_dir or app_directory()
@@ -497,7 +497,7 @@ def main(argv=None):
     server.newConnection.connect(incoming)
     if getattr(sys, "frozen", False) and not args.smoke_test:
         preferences = window.preferences
-        if "launch_at_login" not in preferences:
+        if preferences.get("launch_at_login", True):
             try:
                 set_launch_at_login(True)
                 window.login.setChecked(True)

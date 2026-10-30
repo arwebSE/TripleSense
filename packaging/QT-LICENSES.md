@@ -1,6 +1,6 @@
 # Qt and PySide
 
-DSShine uses the open-source LGPL option for dynamically linked Qt/PySide.
+TripleSense uses the open-source LGPL option for dynamically linked Qt/PySide.
 The bundled Qt/PySide commercial license text supplied by their wheels does
 not mean this project holds or requires a commercial Qt license.
 

@@ -1,6 +1,6 @@
 # Standalone app
 
-DSShine forwards a whole DualSense between computers independently of streaming software.
+TripleSense forwards a whole DualSense between computers independently of streaming software.
 Install it on the Windows game PC and on the computer with the Bluetooth
 DualSense. Your streaming app handles video, ordinary game audio, keyboard
 and mouse separately. No streaming app or paid controller driver is required.
@@ -15,10 +15,10 @@ tested with a real controller; Windows-to-Windows still needs live validation.
 
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.4.15-Windows-x64.exe`. The installer includes
+1. **Windows:** run `TripleSense-Setup-0.4.16-Windows-x64.exe`. The installer includes
    the signed USB/IP driver and adds app-specific LAN and private-VPN firewall rules.
    It does not change your streaming software or restart Windows automatically.
-2. **Mac:** open `DSShine-macOS.dmg` and drag DSShine into Applications,
+2. **Mac:** open `TripleSense-macOS.dmg` and drag TripleSense into Applications,
    and open it. Allow local-network access if macOS asks. The current preview
    is locally signed, not Developer ID signed/notarized; a downloaded preview
    may require macOS's Open Anyway action once.
@@ -33,18 +33,18 @@ tested with a real controller; Windows-to-Windows still needs live validation.
 
 Disable your streaming app's controller forwarding if it would expose a second
 controller on the game PC. For example, with Sunshine/Moonlight, disable
-Sunshine's controller forwarding in its configuration. DSShine does not change
+Sunshine's controller forwarding in its configuration. TripleSense does not change
 that setting automatically. Other streaming software has not yet been validated.
-**Settings → Repair Windows setup** repairs DSShine's driver and firewall rules
-without a terminal. DSShine does not hide the physical controller from macOS;
+**Settings → Repair Windows setup** repairs TripleSense's driver and firewall rules
+without a terminal. TripleSense does not hide the physical controller from macOS;
 a streaming client may still use it for local UI navigation.
 
 ## Daily use
 
-Open DSShine on both computers and turn on the controller. Paired computers
-reconnect automatically. **Settings → Start DSShine when I log in** is enabled on first
+Open TripleSense on both computers and turn on the controller. Paired computers
+reconnect automatically. **Settings → Start TripleSense when I log in** is enabled on first
 launch and can be disabled in the app. Closing the main window releases effects,
-removes its owned virtual controller and quits DSShine. Minimize the window to
+removes its owned virtual controller and quits TripleSense. Minimize the window to
 keep the controller connected. There is no tray or menu-bar icon.
 
 Disconnect works independently of the video stream. A network loss releases
@@ -68,7 +68,7 @@ audio packets. Ordinary game sound still plays through your streaming app.
 
 ## Pairing and networking
 
-DSShine discovers its own servers on the LAN; no streaming app discovery or
+TripleSense discovers its own servers on the LAN; no streaming app discovery or
 pairing records are required.
 The Windows app listens for the controller connection; the Mac makes outgoing
 connections, so it needs no incoming firewall exception or SSH login.
@@ -85,7 +85,7 @@ The underlying USB/IP listener is bound only to Windows loopback.
 
 The normal connection uses TCP 3250. The pairing listener uses TCP 3251 only
 while a code is active; discovery uses mDNS and UDP 3252 broadcast.
-Installer firewall exceptions restrict TCP access to the DSShine executable,
+Installer firewall exceptions restrict TCP access to the TripleSense executable,
 local subnets and `100.64.0.0/10`, used by Tailscale and default NetBird networks.
 Discovery uses local broadcasts plus direct UDP queries to peers listed by the
 installed Tailscale and NetBird apps. No router port forwarding is needed.
@@ -110,23 +110,24 @@ server and its credentials. Disconnect before changing the selected server.
 Identities expire after a year; pair again to renew them. App data is stored
 under `%LOCALAPPDATA%/DSShine` on Windows and
 `~/Library/Application Support/DSShine` on macOS. Do not share identity files.
+These internal directories retain the previous name to preserve existing pairings.
 Logs contain connection diagnostics, not microphone recordings.
 
 ## If setup needs attention
 
 - **No server found:** wait for automatic discovery, or enter the Server address directly. Make sure
-  DSShine is open on Windows. On the Mac, use **Settings → Network permissions**
-  and allow DSShine.
+  TripleSense is open on Windows. On the Mac, use **Settings → Network permissions**
+  and allow TripleSense.
 - **Windows refuses a connection:** click **Settings → Repair Windows setup**
   and accept its administrator prompt. This repairs the driver and LAN/private-VPN
   firewall rules only.
-- **Controller asleep:** press PS. DSShine waits for it and reconnects.
+- **Controller asleep:** press PS. TripleSense waits for it and reconnects.
 - **Steam owns the controller:** close Steam on the Mac. Steam can remain open
   on the Windows game PC.
-- **Update:** use **Settings → Downloads and updates**, quit DSShine, and run the newer
+- **Update:** use **Settings → Downloads and updates**, quit TripleSense, and run the newer
   Windows installer or replace the Mac app in Applications. Pairing is kept.
 
-Opening DSShine again brings its existing window forward instead of starting a
+Opening TripleSense again brings its existing window forward instead of starting a
 competing controller instance.
 
 ## Interface

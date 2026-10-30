@@ -35,7 +35,7 @@ Longer sustained mixed haptics/audio and broader OS/hardware validation remain.
 
 ## Measurements on 2026-10-30
 
-The DualSense was connected to the Mac over Bluetooth. The normal DSShine app
+The DualSense was connected to the Mac over Bluetooth. The normal TripleSense app
 was stopped for local tests; no network or virtual USB driver was involved.
 Microphone PCM was processed in memory and discarded. Only counts, timings and
 signal levels were retained.
@@ -98,7 +98,7 @@ haptics engine alive is not a verified workaround.
 
 ## Reproduce the current path
 
-Stop DSShine on the controller computer, connect the controller over Bluetooth,
+Stop TripleSense on the controller computer, connect the controller over Bluetooth,
 and use the developer environment:
 
 ```sh
@@ -107,7 +107,7 @@ python tools/profile_bt_audio.py --microphone --seconds 3 --out captures/bt-audi
 
 This sends silence, drains input and saves scalar diagnostics. It attempts to
 turn the microphone off on exit. A zero exit status means the API calls finished;
-compare achieved and required rates before judging continuity. Reopen DSShine
+compare achieved and required rates before judging continuity. Reopen TripleSense
 after testing.
 
 Acceptance still requires sustained speaker and microphone signal across the

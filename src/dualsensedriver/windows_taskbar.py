@@ -14,7 +14,7 @@ PROPERTY_IDS = {"relaunch_command": 2, "relaunch_icon": 3, "display_name": 4, "a
 
 def application_id():
     # Development runs must not replace the installed app's taskbar association.
-    return APP_ID if getattr(sys, "frozen", False) else "DSShine.Development"
+    return APP_ID if getattr(sys, "frozen", False) else "TripleSense.Development"
 
 
 class _Guid(ctypes.Structure):
@@ -108,7 +108,7 @@ def set_window_identity(hwnd):
         # Set relaunch metadata before the ID makes the window visible to the shell.
         store.write(2, subprocess.list2cmdline(command))
         store.write(3, str(icon) + ",0")
-        store.write(4, "DSShine")
+        store.write(4, "TripleSense")
         store.write(5, application_id())
         _check(store._method(7)(store.pointer))  # IPropertyStore::Commit
     finally:

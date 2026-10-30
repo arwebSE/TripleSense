@@ -1,16 +1,20 @@
 # Planned platform support
 
-DSShine is a controller bridge between computers, independently of video-streaming
+TripleSense is a controller bridge between computers, independently of video-streaming
 software. macOS is a supported Client platform, not a requirement. Windows Client
 is implemented too; only Mac-to-Windows currently has live hardware acceptance
 evidence in this project.
 
-Before claiming a broadly useful release, validate Windows-to-Windows input,
-feedback and cleanup, and fix continuous Bluetooth speaker/microphone/haptics
-audio. These are functional release requirements alongside simple installation.
+Next milestone: Linux and macOS Server support, including virtual DualSense HID
+and audio devices. Linux Client support and USB controller connections are also
+required for full platform coverage. Keep the existing Windows Server and Mac
+Bluetooth audio path working while adding these backends.
 
-DSShine currently creates the virtual DualSense on Windows using usbip-win2.
-This is a limitation of DSShine's current server backend, not Sunshine:
+Before expanding support claims, validate Windows-to-Windows input, feedback
+and cleanup, and extended Bluetooth speaker/microphone/haptics audio sessions.
+
+TripleSense currently creates the virtual DualSense on Windows using usbip-win2.
+This is a limitation of TripleSense's current server backend, not Sunshine:
 Sunshine itself supports Windows, macOS and Linux.
 
 Future work: add macOS and Linux server backends that expose a native virtual
