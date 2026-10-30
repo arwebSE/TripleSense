@@ -33,6 +33,17 @@ def broadcast_addresses():
     return addresses
 
 
+def interface_addresses():
+    import ifaddr
+
+    return {
+        address.ip
+        for adapter in ifaddr.get_adapters()
+        for address in adapter.ips
+        if address.is_IPv4
+    }
+
+
 class LanDiscovery:
     def __init__(self, notify, identity, *, port=PORT, targets=None, scanning=True):
         self.notify, self.identity, self.port = notify, identity, port
@@ -82,6 +93,10 @@ class LanDiscovery:
             return
         value = json.loads(packet[len(MAGIC) :])
         if value.get("token") != self.token or value.get("kind") != "game":
+            return
+        # Broadcast relays can repeat a real reply using the relay's own IP.
+        # Only offer an address that belongs to the responding DSShine server.
+        if peer[0] not in value.get("addresses", []):
             return
         identity, name = value.get("id"), value.get("name")
         if (
@@ -142,6 +157,7 @@ class LanDiscovery:
                                     "token": token,
                                     "id": self.identity,
                                     "name": self.name,
+                                    "addresses": sorted(interface_addresses()),
                                 }
                                 self.server.sendto(MAGIC + json.dumps(response).encode(), peer)
                     except BlockingIOError:

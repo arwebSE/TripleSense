@@ -687,7 +687,7 @@ class Window(QMainWindow):
         self.pair_instructions.setText(
             "Enter this code in the Client app on your controller computer."
             if server
-            else "Choose a server or enter its address, then enter the code shown in its Server app."
+            else "Choose a server or enter its address, then enter the code from its Server app."
         )
         self.server_pair.setVisible(server)
         self.client_pair.setVisible(not server)
