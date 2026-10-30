@@ -200,7 +200,7 @@ wheels = [
 
 [[package]]
 name = "dsshine"
-version = "0.4.10"
+version = "0.4.11"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },

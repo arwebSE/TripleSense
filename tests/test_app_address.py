@@ -101,6 +101,12 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(
             window.hosts.currentItem().data(Qt.ItemDataRole.UserRole)["address"], selected
         )
+        window.current_role = "controller"
+        window._show_pair_page()
+        self.application.processEvents()
+        self.assertGreaterEqual(window.hosts.height(), 168)
+        self.assertGreater(window.code.x(), window.code_caption.geometry().right())
+        self.assertLessEqual(abs(window.code.y() - window.pair_submit.y()), 2)
 
     def test_main_window_has_no_scroll_container_or_dropdown(self):
         self.assertEqual(self.window.findChildren(QScrollArea), [])

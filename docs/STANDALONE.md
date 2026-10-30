@@ -15,7 +15,7 @@ tested with a real controller; Windows-to-Windows still needs live validation.
 
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.4.10-Windows-x64.exe`. The installer includes
+1. **Windows:** run `DSShine-Setup-0.4.11-Windows-x64.exe`. The installer includes
    the signed USB/IP driver and adds app-specific LAN and private-VPN firewall rules.
    It does not change your streaming software or restart Windows automatically.
 2. **Mac:** open `DSShine-macOS.dmg` and drag DSShine into Applications,

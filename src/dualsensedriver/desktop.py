@@ -446,9 +446,21 @@ class Window(QMainWindow):
         client = QVBoxLayout(self.client_pair)
         client.setContentsMargins(0, 0, 0, 0)
         client.setSpacing(8)
-        heading = QHBoxLayout()
-        heading.addWidget(label("Server address"), 1)
-        client.addLayout(heading)
+        self.hosts_heading = label("Available servers")
+        client.addWidget(self.hosts_heading)
+        self.hosts = QListWidget()
+        self.hosts.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.hosts.setWordWrap(True)
+        self.hosts.setFixedHeight(178)
+        self.hosts.itemClicked.connect(self._choose_discovered)
+        client.addWidget(self.hosts)
+        self.discovery_hint = label(
+            "Looking for servers on LAN, Tailscale and NetBird… You can also enter an address.",
+            "muted",
+            wrap=True,
+        )
+        client.addWidget(self.discovery_hint)
+        client.addWidget(label("Server address"))
         self.manual_address = QLineEdit()
         self.manual_address.setPlaceholderText("LAN / VPN IP address or hostname")
         self.manual_address.setToolTip("Use the server's LAN, Tailscale or NetBird address.")
@@ -458,20 +470,11 @@ class Window(QMainWindow):
         )
         self.manual_address.editingFinished.connect(self._remember_address)
         client.addWidget(self.manual_address)
-        self.hosts = QListWidget()
-        self.hosts.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.hosts.setWordWrap(True)
-        self.hosts.setFixedHeight(92)
-        self.hosts.itemClicked.connect(self._choose_discovered)
-        client.addWidget(self.hosts)
-        self.discovery_hint = label(
-            "Looking for servers on LAN, Tailscale and NetBird… You can also enter an address.",
-            "muted",
-            wrap=True,
-        )
-        client.addWidget(self.discovery_hint)
         code_row = QHBoxLayout()
-        code_row.addWidget(label("Pairing code"))
+        self.code_caption = label("Pairing code")
+        self.code_caption.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        self.code_caption.setFixedWidth(100)
+        code_row.addWidget(self.code_caption)
         self.code = QLineEdit()
         self.code.setPlaceholderText("0000")
         self.code.setMaxLength(4)
@@ -480,14 +483,13 @@ class Window(QMainWindow):
         self.code.returnPressed.connect(self._pair_client)
         code_row.addWidget(self.code)
         code_row.addStretch(1)
+        self.pair_submit = button("Connect", self._pair_client, primary=True)
+        code_row.addWidget(self.pair_submit)
         client.addLayout(code_row)
         self.pair_error = label("", "muted", wrap=True)
+        self.pair_error.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Maximum)
         client.addWidget(self.pair_error)
-        self.pair_submit = button("Connect", self._pair_client, primary=True)
-        connect_row = QHBoxLayout()
-        connect_row.addStretch(1)
-        connect_row.addWidget(self.pair_submit)
-        client.addLayout(connect_row)
+        client.addStretch(1)
         layout.addWidget(self.client_pair, 1)
         return page
 
@@ -685,7 +687,7 @@ class Window(QMainWindow):
         self.pair_instructions.setText(
             "Enter this code in the Client app on your controller computer."
             if server
-            else "Enter your gaming PC's address and the code shown in its Server app."
+            else "Choose a server or enter its address, then enter the code shown in its Server app."
         )
         self.server_pair.setVisible(server)
         self.client_pair.setVisible(not server)
@@ -798,6 +800,7 @@ class Window(QMainWindow):
             ):
                 self.hosts.setCurrentItem(item)
         self.hosts.setVisible(bool(self.hosts.count()))
+        self.hosts_heading.setVisible(bool(self.hosts.count()))
         self.discovery_hint.setVisible(not self.hosts.count())
         self._fit_page()
 
