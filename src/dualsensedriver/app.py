@@ -5,15 +5,18 @@ from __future__ import annotations
 import argparse
 import asyncio
 import concurrent.futures
+import importlib
 import json
 import logging
 import os
 import sys
 import threading
+import uuid
 from pathlib import Path
 
 from PySide6.QtCore import QLockFile, QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QAction, QDesktopServices, QFont
+from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -69,7 +72,10 @@ class AppEngine:
 
     def _run(self):
         asyncio.set_event_loop(self.loop)
-        self.loop.run_forever()
+        try:
+            self.loop.run_forever()
+        finally:
+            self.loop.close()
 
     def submit(self, coroutine):
         future = asyncio.run_coroutine_threadsafe(coroutine, self.loop)
@@ -88,8 +94,12 @@ class AppEngine:
         return future
 
     async def initialize(self):
+        self.preferences.setdefault("computer_id", uuid.uuid4().hex)
+        self.save()
         try:
-            self.discovery = await asyncio.to_thread(Discovery, self.notify)
+            self.discovery = await asyncio.to_thread(
+                Discovery, self.notify, self.preferences["computer_id"]
+            )
         except OSError:
             self.notify("discovery_unavailable", None)
         await self.set_role(
@@ -163,7 +173,9 @@ class AppEngine:
                 await self._start_game()
                 self.notify("paired", name)
 
-            self.pairing = PairingOffer(self.root / "identities", accepted)
+            self.pairing = PairingOffer(
+                self.root / "identities", accepted, host_id=self.preferences["computer_id"]
+            )
             await self.pairing.start()
             self.notify("pair_code", self.pairing.code)
 
@@ -178,6 +190,8 @@ class AppEngine:
 
     async def pair(self, address, code):
         async with self.operation:
+            if self.connection:
+                await self._stop()
             profile = await pair_controller(address, code, self.root / "identities")
             self.preferences["controller_profile"] = profile
             self.save()
@@ -212,15 +226,73 @@ class AppEngine:
         self.preferences[key] = value
         self.save()
 
+    async def discovered(self, computer):
+        profile = self.preferences.get("controller_profile")
+        if (
+            profile
+            and not profile.get("host_id")
+            and computer.get("host_id")
+            and profile["address"] == computer["address"]
+            and computer.get("dsshine")
+        ):
+            # Upgrade an existing pair only after verifying its pinned TLS CA.
+            from .credentials import SERVER_NAME, tls_context
+            from .transport import close_writer
+
+            try:
+                _, writer = await asyncio.wait_for(
+                    asyncio.open_connection(
+                        profile["address"],
+                        profile["port"],
+                        ssl=tls_context(Path(profile["credentials"]), server=False),
+                        server_hostname=SERVER_NAME,
+                        ssl_handshake_timeout=3,
+                        ssl_shutdown_timeout=1,
+                    ),
+                    5,
+                )
+                await close_writer(writer)
+            except (OSError, TimeoutError):
+                return
+            profile["host_id"] = computer["host_id"]
+            self.save()
+        if (
+            profile
+            and profile.get("host_id")
+            and profile["host_id"] == computer.get("host_id")
+            and profile["address"] != computer["address"]
+        ):
+            # Discovery changes the destination, never the pinned TLS identity.
+            profile["address"] = computer["address"]
+            self.preferences["game_address"] = computer["address"]
+            self.save()
+
+    async def rescan(self):
+        if self.discovery:
+            await asyncio.to_thread(self.discovery.scan)
+
+    async def set_audio(self, enabled):
+        async with self.operation:
+            self.preferences["audio"] = enabled
+            self.save()
+            reconnect = self.connection is not None
+            if reconnect:
+                await self.connection.stop()
+                self.connection = None
+        if reconnect:
+            await self.connect()
+
     async def shutdown(self):
         await self.stop()
         if self.discovery:
             await asyncio.to_thread(self.discovery.close)
             self.discovery = None
+        await self.loop.shutdown_asyncgens()
+        await self.loop.shutdown_default_executor()
 
 
 class Window(QMainWindow):
-    def __init__(self, root):
+    def __init__(self, root, *, smoke_test=False):
         super().__init__()
         self.root = root
         self.preferences = load_preferences(root)
@@ -236,10 +308,12 @@ class Window(QMainWindow):
         self.setMinimumSize(620, 600)
         self._build()
         self._tray()
-        self.engine.submit(self.engine.initialize())
+        if not smoke_test:
+            self.engine.submit(self.engine.initialize())
         self.retry = QTimer(self)
         self.retry.timeout.connect(self._auto_connect)
-        self.retry.start(4000)
+        if not smoke_test:
+            self.retry.start(4000)
 
     def _build(self):
         container = QWidget()
@@ -309,14 +383,12 @@ class Window(QMainWindow):
         self.install.clicked.connect(self._install_driver)
         self.install.hide()
         game.addWidget(self.install)
-        self.sunshine = QPushButton("Open Sunshine controller settings")
-        self.sunshine.clicked.connect(
-            lambda: QDesktopServices.openUrl(QUrl("https://localhost:47990/config"))
-        )
+        self.sunshine = QPushButton("Finish or repair Windows setup")
+        self.sunshine.clicked.connect(self._repair_setup)
         game.addWidget(self.sunshine)
         note = QLabel(
-            "In Sunshine, turn controller input off to avoid a second gamepad.\n"
-            "DSShine supplies the DualSense; Moonlight streams the game as usual."
+            "Setup handles the driver, firewall and Sunshine controller setting.\n"
+            "Moonlight streams the game as usual."
         )
         note.setWordWrap(True)
         note.setObjectName("muted")
@@ -327,7 +399,15 @@ class Window(QMainWindow):
         controller = QVBoxLayout(self.controller_box)
         controller.setContentsMargins(0, 0, 0, 0)
         controller.setSpacing(12)
-        controller.addWidget(QLabel("Game PC"))
+        self.paired_pc = QLabel("")
+        self.paired_pc.setTextFormat(Qt.TextFormat.PlainText)
+        controller.addWidget(self.paired_pc)
+        self.change_pc = QPushButton("Change game PC")
+        self.change_pc.setCheckable(True)
+        self.change_pc.toggled.connect(self._show_pair_controls)
+        controller.addWidget(self.change_pc)
+        self.hosts_label = QLabel("Game PC")
+        controller.addWidget(self.hosts_label)
         self.hosts = QComboBox()
         self.hosts.setEditable(True)
         self.hosts.setPlaceholderText("Finding PCs… or enter an address")
@@ -341,11 +421,13 @@ class Window(QMainWindow):
         self.client_pair = QPushButton("Pair with this PC")
         self.client_pair.clicked.connect(self._pair_client)
         controller.addWidget(self.client_pair)
-        self.audio = QCheckBox("Enable experimental controller audio")
+        self.rescan = QPushButton("Find my game PC")
+        self.rescan.clicked.connect(lambda: self._perform(self.engine.rescan()))
+        controller.addWidget(self.rescan)
+        self._show_pair_controls()
+        self.audio = QCheckBox("Controller speaker, microphone and audio haptics")
         self.audio.setChecked(bool(self.preferences.get("audio", False)))
-        self.audio.toggled.connect(
-            lambda value: self.engine.submit(self.engine.update_preferences("audio", value))
-        )
+        self.audio.toggled.connect(lambda value: self._perform(self.engine.set_audio(value)))
         controller.addWidget(self.audio)
         warning = QLabel(
             "Controller speaker, microphone and detailed audio haptics may\n"
@@ -354,6 +436,13 @@ class Window(QMainWindow):
         warning.setObjectName("muted")
         warning.setWordWrap(True)
         controller.addWidget(warning)
+        self.audio_status = QLabel(
+            "Controller audio is off"
+            if not self.audio.isChecked()
+            else "Controller audio enabled · Bluetooth quality unverified"
+        )
+        self.audio_status.setWordWrap(True)
+        controller.addWidget(self.audio_status)
         layout.addWidget(self.controller_box)
         self.auto = QCheckBox("Connect automatically when DSShine opens")
         self.auto.setChecked(bool(self.preferences.get("auto_connect", True)))
@@ -382,6 +471,15 @@ class Window(QMainWindow):
         self.details.setMaximumHeight(120)
         self.details.hide()
         layout.addWidget(self.details)
+        self.permissions = QPushButton("Open network permissions")
+        self.permissions.clicked.connect(self._open_network_permissions)
+        self.permissions.setVisible(sys.platform == "darwin")
+        layout.addWidget(self.permissions)
+        self.updates = QPushButton("Downloads and updates")
+        self.updates.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl("https://github.com/arwebSE/DSShine/releases"))
+        )
+        layout.addWidget(self.updates)
         layout.addStretch(1)
         footer = QLabel(f"DSShine {__version__} · Free and open source")
         footer.setObjectName("muted")
@@ -423,7 +521,9 @@ class Window(QMainWindow):
         show.triggered.connect(self.showNormal)
         menu.addAction(show)
         quit_action = QAction("Quit DSShine", self)
+        quit_action.setShortcut("Ctrl+Q" if sys.platform == "win32" else "Meta+Q")
         quit_action.triggered.connect(self.quit)
+        self.addAction(quit_action)
         menu.addAction(quit_action)
         self.tray.setContextMenu(menu)
         self.tray.activated.connect(
@@ -440,6 +540,16 @@ class Window(QMainWindow):
         self.auto.setVisible(not game)
         self.pair_button.setEnabled(sys.platform == "win32")
         self.sunshine.setVisible(sys.platform == "win32")
+
+    def _show_pair_controls(self):
+        profile = self.preferences.get("controller_profile")
+        show = not profile or self.change_pc.isChecked()
+        self.change_pc.setVisible(bool(profile))
+        self.paired_pc.setVisible(bool(profile))
+        if profile:
+            self.paired_pc.setText("Paired with " + profile.get("name", "Game PC"))
+        for widget in (self.hosts_label, self.hosts, self.client_pair, self.rescan):
+            widget.setVisible(show)
 
     def _login_changed(self, enabled):
         try:
@@ -465,7 +575,26 @@ class Window(QMainWindow):
             self.auto.setChecked(False)
             self._perform(self.engine.stop())
         else:
+            if self.role.currentData() == "controller":
+                self.auto.setChecked(True)
             self._perform(self.engine.connect())
+
+    def _open_network_permissions(self):
+        url = (
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_LocalNetwork"
+            if sys.platform == "darwin"
+            else "ms-settings:network-status"
+        )
+        QDesktopServices.openUrl(QUrl(url))
+
+    def _repair_setup(self):
+        try:
+            from .setup import request_repair
+
+            request_repair()
+            self.description.setText("Windows setup repair is opening. Accept the Windows prompt.")
+        except (OSError, RuntimeError) as exc:
+            self.on_event("error", str(exc))
 
     def _auto_connect(self):
         if (
@@ -538,9 +667,13 @@ class Window(QMainWindow):
             self.on_event("error", str(exc))
 
     def on_event(self, kind, value):
+        if kind == "audio_status":
+            self.audio_status.setText(str(value))
+            return
         if kind == "computer":
             self.computers[value["id"]] = value
             self._refresh_computers()
+            self.engine.submit(self.engine.discovered(value))
             return
         if kind == "computer_removed":
             self.computers.pop(value, None)
@@ -564,6 +697,7 @@ class Window(QMainWindow):
             self.description.setText("Install the free controller driver, then click Connect.")
             return
         if kind == "discovery_unavailable":
+            self.permissions.show()
             self.description.setText(
                 "Automatic discovery is unavailable. Enter your game PC address."
             )
@@ -595,6 +729,10 @@ class Window(QMainWindow):
             if sys.platform == "darwin":
                 message += " Allow DSShine in Privacy & Security → Local Network."
         if kind == "error":
+            self.permissions.setVisible(
+                sys.platform == "darwin"
+                or any(text in message for text in ("network", "Network", "route", "timed out"))
+            )
             self.status.setText("Connection needs attention")
             self.description.setText(message)
             self.connected = False
@@ -608,6 +746,8 @@ class Window(QMainWindow):
             self.pin_hint.hide()
             self.status.setText("Paired")
             self.description.setText("Paired with " + str(value))
+            self.change_pc.setChecked(False)
+            self._show_pair_controls()
         elif kind == "controller_started":
             self.status.setText("Connecting")
             self.description.setText("DualSense found. Connecting to your game PC…")
@@ -626,8 +766,8 @@ class Window(QMainWindow):
             if self.connected or self.engine.connection or self.engine.receiver
             else "Connect"
         )
-        self.audio.setEnabled(self.engine.connection is None)
-        self.client_pair.setEnabled(self.engine.connection is None)
+        if not self.audio.isChecked():
+            self.audio_status.setText("Controller audio is off")
         self.pair_button.setEnabled(
             sys.platform == "win32"
             and (self.engine.receiver is None or self.engine.receiver.owned_port is None)
@@ -662,6 +802,7 @@ class Window(QMainWindow):
                 return
             self.quitting = True
             self.engine.loop.call_soon_threadsafe(self.engine.loop.stop)
+            self.engine.thread.join(timeout=2)
             self.tray.hide()
             QApplication.instance().quit()
 
@@ -673,7 +814,25 @@ def main(argv=None):
     parser.add_argument("--data-dir", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--smoke-test", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--background", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--quit", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--repair-setup", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.repair_setup:
+        from .setup import repair_windows
+
+        application = QApplication(sys.argv[:1])
+        try:
+            changed = repair_windows()
+            QMessageBox.information(
+                None,
+                "DSShine setup repaired",
+                "Driver and local-network access are ready."
+                + (" Restart Sunshine to apply the controller setting." if changed else ""),
+            )
+            return 0
+        except Exception as exc:
+            QMessageBox.warning(None, "DSShine setup needs attention", str(exc))
+            return 1
     if args.smoke_test:
         try:
             from ds5bridge.audio import silent_opus_frame
@@ -695,14 +854,64 @@ def main(argv=None):
     application.setFont(QFont("Segoe UI" if sys.platform == "win32" else ".AppleSystemUIFont", 10))
     root = args.data_dir or app_directory()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    import hashlib
+
+    endpoint = "DSShine-" + hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:24]
+    if args.quit:
+        peer = QLocalSocket()
+        peer.connectToServer(endpoint)
+        if peer.waitForConnected(1500):
+            peer.write(b"quit")
+            peer.waitForBytesWritten(1500)
+        return 0
     lock = QLockFile(str(root / "app.lock"))
     if not lock.tryLock(100):
-        QMessageBox.information(
-            None, "DSShine is already open", "Open DSShine from its tray or menu-bar icon."
-        )
+        peer = QLocalSocket()
+        peer.connectToServer(endpoint)
+        if peer.waitForConnected(1500):
+            peer.write(b"show")
+            peer.waitForBytesWritten(1500)
         return 0
     logging.basicConfig(level=logging.WARNING, filename=root / "app.log", encoding="utf-8")
-    window = Window(root)
+    # cython-hidapi initializes IOHIDManager at import and finalizes at atexit.
+    # macOS requires that owner thread to survive until hid_exit, on that same
+    # thread. Import before the engine can first import it in an executor.
+    if sys.platform == "darwin":
+        importlib.import_module("hid")
+    window = Window(root, smoke_test=bool(args.smoke_test))
+    server = QLocalServer()
+    server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
+    QLocalServer.removeServer(endpoint)
+    server.listen(endpoint)
+
+    def incoming():
+        peer = server.nextPendingConnection()
+
+        def command():
+            message = bytes(peer.readAll())
+            if message == b"quit":
+                window.quit()
+            elif message == b"show":
+                window.showNormal()
+                window.raise_()
+                window.activateWindow()
+            peer.disconnectFromServer()
+
+        peer.readyRead.connect(command)
+        peer.disconnected.connect(peer.deleteLater)
+        if peer.bytesAvailable():
+            command()
+
+    server.newConnection.connect(incoming)
+    if getattr(sys, "frozen", False) and not args.smoke_test:
+        preferences = window.preferences
+        if "launch_at_login" not in preferences:
+            try:
+                set_launch_at_login(True)
+                window.login.setChecked(True)
+                window.engine.submit(window.engine.update_preferences("launch_at_login", True))
+            except (OSError, RuntimeError) as exc:
+                window.on_event("error", "Could not enable automatic startup: " + str(exc))
     if not args.background:
         window.show()
     if args.smoke_test:

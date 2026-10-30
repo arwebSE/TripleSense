@@ -63,10 +63,20 @@ def private_write(path, data):
 class PairingOffer:
     """One PIN, one paired controller, two minutes, at most five attempts."""
 
-    def __init__(self, root, on_paired, *, host="0.0.0.0", port=PAIR_PORT, stream_port=STREAM_PORT):
+    def __init__(
+        self,
+        root,
+        on_paired,
+        *,
+        host="0.0.0.0",
+        port=PAIR_PORT,
+        stream_port=STREAM_PORT,
+        host_id="",
+    ):
         self.root = Path(root)
         self.on_paired = on_paired
         self.host, self.port, self.stream_port = host, port, stream_port
+        self.host_id = host_id
         self.code = f"{secrets.randbelow(100_000_000):08d}"
         self.expires = time.monotonic() + 120
         self.attempts = 0
@@ -107,6 +117,7 @@ class PairingOffer:
                 {
                     "version": 1,
                     "name": socket.gethostname()[:64],
+                    "host_id": self.host_id,
                     "port": self.stream_port,
                     "credentials": {
                         name: (self.pair / "host" / name).read_text("ascii")
@@ -205,6 +216,7 @@ async def pair_controller(address, code, root, *, port=PAIR_PORT):
             "port": stream_port,
             "credentials": str(destination),
             "name": str(payload.get("name", "Game PC"))[:64],
+            "host_id": str(payload.get("host_id", ""))[:64],
         }
     except (OSError, TimeoutError):
         raise

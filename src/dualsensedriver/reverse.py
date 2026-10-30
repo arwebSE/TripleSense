@@ -292,6 +292,8 @@ class ControllerConnection:
 
     async def _watch_status(self):
         previous = None
+        audio_sample = None
+        audio_at = 0
         while not self.closing:
             device = getattr(self.backend, "connected", None)
             if device is not None:
@@ -306,6 +308,20 @@ class ControllerConnection:
                         self.notify(
                             "available", "Connected to " + self.profile.get("name", "Game PC")
                         )
+            if getattr(self.backend, "audio_enabled", False):
+                now = asyncio.get_running_loop().time()
+                if now - audio_at >= 3:
+                    stats = self.backend.stats.copy()
+                    message = "Controller audio enabled · waiting for game audio"
+                    if audio_sample and stats["audio_out_bytes"] > audio_sample["audio_out_bytes"]:
+                        rate = (stats["reports_39"] - audio_sample["reports_39"]) / (now - audio_at)
+                        message = (
+                            "Controller audio is stalling on this Bluetooth link"
+                            if rate < 40
+                            else "Controller audio is streaming · listening check still needed"
+                        )
+                    self.notify("audio_status", message)
+                    audio_sample, audio_at = stats, now
             await asyncio.sleep(0.5)
 
     async def _offer(self):

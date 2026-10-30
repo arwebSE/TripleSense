@@ -72,30 +72,43 @@ def local_addresses():
 
 
 class Discovery:
-    def __init__(self, notify):
+    def __init__(self, notify, identity):
         from zeroconf import IPVersion, ServiceBrowser, Zeroconf
 
+        from .lan import LanDiscovery
+
         self.notify = notify
-        self.zeroconf = Zeroconf(ip_version=IPVersion.V4Only)
-        self.browser = ServiceBrowser(
-            self.zeroconf, [SERVICE, SUNSHINE_SERVICE], handlers=[self._changed]
-        )
+        self.identity = identity
+        self.service_ids = {}
+        self.lan = LanDiscovery(notify, identity)
+        self.zeroconf = self.browser = None
+        try:
+            self.zeroconf = Zeroconf(ip_version=IPVersion.V4Only)
+            self.browser = ServiceBrowser(
+                self.zeroconf, [SERVICE, SUNSHINE_SERVICE], handlers=[self._changed]
+            )
+        except OSError:
+            pass  # Broadcast discovery remains available without Bonjour.
         self.advertisement = None
 
     def _changed(self, zeroconf, service_type, name, state_change):
         from zeroconf import ServiceStateChange
 
         if state_change is ServiceStateChange.Removed:
-            self.notify("computer_removed", name)
+            self.notify("computer_removed", self.service_ids.pop(name, name))
             return
         info = zeroconf.get_service_info(service_type, name, timeout=1500)
         if info:
+            identity = info.properties.get(b"id", b"").decode("ascii", errors="ignore")
+            identifier = "dsshine:" + identity if identity else name
+            self.service_ids[name] = identifier
             for address in info.parsed_addresses():
                 if ipaddress.ip_address(address).version == 4:
                     self.notify(
                         "computer",
                         {
-                            "id": name,
+                            "id": identifier,
+                            "host_id": identity,
                             "address": address,
                             "name": name.removesuffix("." + service_type)[:64],
                             "dsshine": service_type == SERVICE,
@@ -107,6 +120,9 @@ class Discovery:
         from zeroconf import ServiceInfo
 
         self.withdraw()
+        self.lan.advertise()
+        if not self.zeroconf:
+            return
         addresses = local_addresses()
         if not addresses:
             raise RuntimeError("No LAN connection found")
@@ -114,21 +130,31 @@ class Discovery:
         self.advertisement = ServiceInfo(
             SERVICE,
             name + "." + SERVICE,
-            addresses=[socket.inet_aton(address) for address in addresses],
+            addresses=[socket.inet_aton(addresses[0])],
             port=3250,
-            properties={b"version": b"1", b"pair_port": b"3251"},
+            properties={b"version": b"1", b"pair_port": b"3251", b"id": self.identity.encode()},
         )
-        self.zeroconf.register_service(self.advertisement, allow_name_change=True)
+        try:
+            self.zeroconf.register_service(self.advertisement, allow_name_change=True)
+        except OSError:
+            self.advertisement = None
 
     def withdraw(self):
+        self.lan.withdraw()
         if self.advertisement:
             self.zeroconf.unregister_service(self.advertisement)
             self.advertisement = None
 
     def close(self):
         self.withdraw()
-        self.browser.cancel()
-        self.zeroconf.close()
+        self.lan.close()
+        if self.browser:
+            self.browser.cancel()
+        if self.zeroconf:
+            self.zeroconf.close()
+
+    def scan(self):
+        self.lan.scan()
 
 
 def bundled_installer():

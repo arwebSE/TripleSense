@@ -179,6 +179,27 @@ def main():
             ],
             check=True,
         )
+        image_root = ROOT / "build" / "mac-installer"
+        if image_root.exists():
+            shutil.rmtree(image_root)
+        image_root.mkdir(parents=True)
+        shutil.copytree(bundle, image_root / "DSShine.app", symlinks=True)
+        (image_root / "Applications").symlink_to("/Applications", target_is_directory=True)
+        subprocess.run(
+            [
+                "hdiutil",
+                "create",
+                "-volname",
+                "DSShine",
+                "-srcfolder",
+                str(image_root),
+                "-format",
+                "UDZO",
+                "-ov",
+                str(ROOT / "dist" / "DSShine-macOS.dmg"),
+            ],
+            check=True,
+        )
     elif args.installer:
         compiler = shutil.which("ISCC.exe")
         for base in (Path.home() / "AppData/Local/Programs", Path("C:/Program Files (x86)")):

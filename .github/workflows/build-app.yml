@@ -35,4 +35,5 @@ jobs:
           path: |
             dist/DSShine-Setup-*.exe
             dist/DSShine-macOS.zip
+            dist/DSShine-macOS.dmg
           if-no-files-found: error

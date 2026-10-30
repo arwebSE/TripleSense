@@ -105,6 +105,37 @@ still unreliable in the user's app; manual IP entry worked. The address field
 now retains manual text across discovery updates and restores a saved address
 or the paired profile's address when the app opens.
 
+## Installation and reconnection update, 2026-10-30
+
+The 0.3 desktop update installed successfully on Windows and macOS, preserved
+the existing pair and automatically reconnected. The Mac app received a stable
+discovery identity and adopted it only after checking the existing TLS identity.
+Launch-at-login registration was confirmed on both systems. The Windows
+installer created app-specific, local-subnet rules for TCP 3250–3251 and UDP
+5353/3252 on Private and Public profiles. The Mac disk image passed checksum
+verification. Fresh live input returned 1,000 reports in 3.997 seconds with 262
+distinct physical timestamps; physical trigger feedback/off readback was 0x11/0.
+
+The packaged Mac Bluetooth app, with audio explicitly enabled, delivered 73,920
+microphone samples with nonzero signal, -65.08 dBFS RMS and no Windows capture
+overflows during a short measurement. A quiet 1.5 kHz speaker tone produced a
+19.4 dB rise in the corresponding band at the physical controller microphone.
+Only scalar measurements were saved. This proves a speaker/microphone path for
+that trial; continuous Bluetooth output quality and native game haptics are
+still unverified.
+
+An app restart exposed a native macOS shutdown crash in hid_exit: the HID
+library had been initialized on an executor thread, which exited before its
+atexit cleanup on the main thread. Version 0.3.1 initializes it on the main
+thread before starting workers and joins executor cleanup before exiting.
+The installed 0.3.1 Mac app then passed three connected quit/reopen cycles with
+zero new native crash reports, preserving its pair and reconnecting afterward.
+
+The project suite has 45 tests (one native scheduling skip on Windows), including
+real UDP discovery without Bonjour, unsolicited-reply rejection, address roaming
+without replacing TLS credentials, TLS-gated legacy pair upgrades and idempotent
+Sunshine configuration. GUI/codec smoke checks run on packaged builds.
+
 ## Acceptance procedure
 
 1. Run `tools/verify_windows.py` with the verified driver installed. Require one
