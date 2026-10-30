@@ -154,7 +154,7 @@ both roles, including an error message, visible action bounds and separation
 between the server list and code input. Mode-switch tests stop a live receiver,
 select Client, verify the saved mode, and switch back to Server on Windows.
 Audio-click tests verify a live session cannot be toggled or reconnected.
-The 52 project tests pass on
+The 53 project tests pass on
 Windows (one native skip) and macOS. Packaged Windows and Mac builds passed
 their GUI/codec smoke checks. The redesign preserves the existing audio path
 and its outstanding Mac Bluetooth quality limitations. Audio now defaults on,
@@ -165,6 +165,8 @@ Apple-style blue for positive actions/status, and red for errors and the
 Disconnect/Stop server actions. Removing the universal QWidget stylesheet rule
 lets the native macOS/Windows scrollbar style paint the server list and logs;
 native Mac log renders were checked to confirm there are no fallback arrows.
+Checked controls include a centered white tick, including the read-only audio
+control. A rendered-pixel test verifies the white checkmark is actually present.
 
 ## Acceptance procedure
 

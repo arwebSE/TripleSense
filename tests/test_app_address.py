@@ -11,7 +11,14 @@ from unittest.mock import AsyncMock
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QComboBox, QPushButton, QScrollArea
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QPushButton,
+    QScrollArea,
+    QStyle,
+    QStyleOptionButton,
+)
 
 from dualsensedriver.app import Window
 
@@ -127,6 +134,25 @@ class DesktopTests(unittest.TestCase):
             window._update_actions()
         self.assertFalse(window.audio.property("locked"))
         self.assertTrue(window.audio_status.isHidden())
+
+    def test_checked_indicator_contains_white_checkmark(self):
+        window = self.window
+        window.current_role = "controller"
+        window._show_role()
+        self.application.processEvents()
+        option = QStyleOptionButton()
+        window.audio.initStyleOption(option)
+        rect = window.audio.style().subElementRect(
+            QStyle.SubElement.SE_CheckBoxIndicator, option, window.audio
+        )
+        image = window.audio.grab().toImage()
+        scale = image.devicePixelRatio()
+        whites = 0
+        for y in range(int(rect.top() * scale), int((rect.bottom() + 1) * scale)):
+            for x in range(int(rect.left() * scale), int((rect.right() + 1) * scale)):
+                color = image.pixelColor(x, y)
+                whites += int(min(color.red(), color.green(), color.blue()) > 230)
+        self.assertGreater(whites, 4)
 
     def test_mode_change_stops_current_session_and_persists_new_mode(self):
         window = self.window

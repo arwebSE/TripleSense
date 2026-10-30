@@ -5,8 +5,17 @@ from __future__ import annotations
 import sys
 from datetime import datetime
 
-from PySide6.QtCore import QSize, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QPalette
+from PySide6.QtCore import QPointF, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import (
+    QAction,
+    QColor,
+    QDesktopServices,
+    QFont,
+    QPainter,
+    QPalette,
+    QPen,
+    QPixmap,
+)
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -120,6 +129,26 @@ class Window(QMainWindow):
             self._perform(self.engine.initialize())
 
     def _build(self):
+        # A small HiDPI UI glyph; native scrollbars remain entirely unstyled.
+        checkmark = QPixmap(32, 32)
+        checkmark.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(checkmark)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.scale(2, 2)
+        painter.setPen(
+            QPen(
+                QColor("#ffffff"),
+                2,
+                Qt.PenStyle.SolidLine,
+                Qt.PenCapStyle.RoundCap,
+                Qt.PenJoinStyle.RoundJoin,
+            )
+        )
+        painter.drawPolyline([QPointF(3, 8), QPointF(6.5, 11.5), QPointF(13, 4.5)])
+        painter.end()
+        glyph = self.root / "checkmark.png"
+        checkmark.save(str(glyph))
+        glyph_url = glyph.as_posix()
         palette = self.palette()
         for role, color in (
             (QPalette.ColorRole.Window, "#0b0c0e"),
@@ -162,7 +191,8 @@ class Window(QMainWindow):
         outer.addLayout(footer)
         self._build_settings()
         self._build_logs()
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QMainWindow, QDialog { background: #0b0c0e; color: #f0f1f3; }
             QLabel, QPushButton, QLineEdit, QListWidget, QPlainTextEdit, QCheckBox {
                 font-size: 14px; }
@@ -201,11 +231,13 @@ class Window(QMainWindow):
             QCheckBox { spacing: 10px; }
             QCheckBox::indicator { width: 16px; height: 16px; border: 1px solid #777d87;
                                    border-radius: 4px; background: #0d0e10; }
-            QCheckBox::indicator:checked { background: #0a84ff; border-color: #0a84ff; }
+            QCheckBox::indicator:checked { background: #0a84ff; border-color: #0a84ff;
+                                          image: url("__CHECKMARK__"); }
             QCheckBox[locked="true"] { color: #777d87; }
             QCheckBox[locked="true"]::indicator { border-color: #40444c; }
             QCheckBox[locked="true"]::indicator:checked { background: #315a80; }
-        """)
+        """.replace("__CHECKMARK__", glyph_url)
+        )
 
     def _mode_page(self):
         page = QWidget()
