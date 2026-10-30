@@ -5,7 +5,7 @@ from pathlib import Path
 
 from dualsensedriver.app_support import load_preferences
 from dualsensedriver.credentials import generate_pair
-from dualsensedriver.server_identity import remember, load
+from dualsensedriver.server_identity import load, remember
 
 
 class ServerIdentityTests(unittest.TestCase):
@@ -17,7 +17,9 @@ class ServerIdentityTests(unittest.TestCase):
             credentials = identity / "credentials"
             (identity / "source").rename(credentials)
             remember(root, credentials, "Mac")
-            (root / "settings.json").write_text(json.dumps({"game_credentials": "old", "audio": True}))
+            (root / "settings.json").write_text(
+                json.dumps({"game_credentials": "old", "audio": True})
+            )
             restored = load_preferences(root)
             self.assertEqual(Path(restored["game_credentials"]), credentials.resolve())
             self.assertEqual(restored["controller_name"], "Mac")

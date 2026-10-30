@@ -177,11 +177,20 @@ def main():
         native_helper = bundle / "Contents/MacOS/dsshine-bluetooth"
         subprocess.run(
             [
-                "clang", "-O2", "-Wall", "-Wextra", "-fobjc-arc",
-                "-framework", "AppKit", "-framework", "CoreBluetooth",
-                "-framework", "IOBluetooth",
+                "clang",
+                "-O2",
+                "-Wall",
+                "-Wextra",
+                "-fobjc-arc",
+                "-framework",
+                "AppKit",
+                "-framework",
+                "CoreBluetooth",
+                "-framework",
+                "IOBluetooth",
                 str(ROOT / "src/dualsensedriver/native/macos_bluetooth.m"),
-                "-o", str(native_helper),
+                "-o",
+                str(native_helper),
             ],
             check=True,
         )

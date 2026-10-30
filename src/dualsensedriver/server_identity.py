@@ -10,8 +10,11 @@ from pathlib import Path
 def _folder(root, relative):
     folder = (root / relative).resolve()
     identities = (root / "identities").resolve()
-    if (not folder.is_relative_to(identities) or folder.name != "credentials"
-            or not folder.parent.name.startswith("game-")):
+    if (
+        not folder.is_relative_to(identities)
+        or folder.name != "credentials"
+        or not folder.parent.name.startswith("game-")
+    ):
         raise ValueError("Invalid saved server identity path")
     if not all((folder / name).is_file() for name in ("ca.pem", "cert.pem", "key.pem")):
         raise ValueError("Saved server identity is incomplete")
@@ -44,6 +47,9 @@ def load(root):
         folder = _folder(root, value["credentials"])
         if hashlib.sha256((folder / "ca.pem").read_bytes()).hexdigest() != value["ca_sha256"]:
             return None
-        return {"game_credentials": str(folder), "controller_name": str(value["controller_name"])[:64]}
+        return {
+            "game_credentials": str(folder),
+            "controller_name": str(value["controller_name"])[:64],
+        }
     except (OSError, ValueError, KeyError, TypeError):
         return None

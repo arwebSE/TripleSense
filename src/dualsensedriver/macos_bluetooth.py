@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import queue
 import re
 import struct
@@ -69,11 +69,15 @@ class NativeHID:
                 stderr=subprocess.DEVNULL,
                 bufsize=0,
             )
-            self._reader = threading.Thread(target=self._receive, name="native-bluetooth", daemon=True)
+            self._reader = threading.Thread(
+                target=self._receive, name="native-bluetooth", daemon=True
+            )
             self._reader.start()
         if not self._ready.wait(23):
             self.close()
-            raise OSError("Bluetooth connection timed out. Allow DSShine Bluetooth access and press PS.")
+            raise OSError(
+                "Bluetooth connection timed out. Allow DSShine Bluetooth access and press PS."
+            )
         if self._error or self._closed.is_set():
             self.close()
             raise OSError(self._error or "Bluetooth connection cancelled.")
@@ -131,8 +135,9 @@ class NativeHID:
         self._buffer.extend(chunk)
         while len(self._buffer) >= 79:
             packet = self._buffer[:79]
-            if (packet[:2] != b"\xa1\x31" or
-                    zlib.crc32(packet[:-4]) & 0xFFFFFFFF != int.from_bytes(packet[-4:], "little")):
+            if packet[:2] != b"\xa1\x31" or zlib.crc32(packet[:-4]) & 0xFFFFFFFF != int.from_bytes(
+                packet[-4:], "little"
+            ):
                 del self._buffer[0]
                 continue
             del self._buffer[:79]
@@ -197,7 +202,7 @@ class NativeHID:
             return self._input.get(timeout=timeout_ms / 1000 if timeout_ms else None)[:length]
         except queue.Empty:
             if self._closed.is_set():
-                raise OSError(self._error or "Bluetooth connection closed.")
+                raise OSError(self._error or "Bluetooth connection closed.") from None
             return b""
 
     def close(self):

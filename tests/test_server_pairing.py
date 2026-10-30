@@ -57,7 +57,9 @@ class ServerPairingTests(unittest.IsolatedAsyncioTestCase):
             patch("dualsensedriver.app.asyncio.sleep", new_callable=AsyncMock),
         ):
             await self.engine._create_pairing_offer()
-            with patch.object(self.engine, "_create_pairing_offer", new_callable=AsyncMock) as rotate:
+            with patch.object(
+                self.engine, "_create_pairing_offer", new_callable=AsyncMock
+            ) as rotate:
                 await self.engine.expiry
                 rotate.assert_awaited_once_with(auto_copy=False)
         offer.stop.assert_awaited_once()
