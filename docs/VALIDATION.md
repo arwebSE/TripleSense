@@ -136,6 +136,23 @@ real UDP discovery without Bonjour, unsolicited-reply rejection, address roaming
 without replacing TLS credentials, TLS-gated legacy pair upgrades and idempotent
 Sunshine configuration. GUI/codec smoke checks run on packaged builds.
 
+## Server/Client interface redesign, 2026-10-30
+
+Version 0.4 replaces the form-style window with explicit Server/Client buttons,
+a connection view, and a separate pairing view. Settings and Logs are separate
+dialogs. The main window has no scroll container or dropdown. Only the discovered
+server list and log contents can scroll. The client pairing screen offers a
+server list and a separate manual-address panel, preserving the typed address
+when discovery updates.
+
+Windows and Mac renders were inspected for connected, disconnected, pairing,
+manual entry and settings states at 720×590. Layout regression checks exercise
+both roles at 660×570, including an error message, visible action bounds and
+separation between the server list and code input. The 47 project tests pass on
+Windows (one native skip) and macOS. Packaged Windows and Mac builds passed
+their GUI/codec smoke checks. The redesign preserves the existing audio path
+and its outstanding Mac Bluetooth quality limitations.
+
 ## Acceptance procedure
 
 1. Run `tools/verify_windows.py` with the verified driver installed. Require one

@@ -10,8 +10,9 @@ It uses the free signed USB/IP driver, with no paid Sunshine driver or fork.
   configures local-network access and offers to configure Sunshine.
 - **Mac:** open the DSShine disk image and drag the app into Applications.
   Open it and allow local-network access when macOS asks.
-- In Windows DSShine, click **Pair a controller computer**. On the Mac, select
-  the game PC and enter the code. Turn on your Bluetooth DualSense.
+- In the Windows **Server** app, click **Pair client**, then **Generate code**.
+  In the Mac **Client** app, click **Pair server**, select the server and enter
+  the code. Turn on your Bluetooth DualSense.
 
 After pairing, DSShine reconnects automatically and opens at login. Closing its
 window leaves it running in the tray or menu bar. Use your normal Moonlight

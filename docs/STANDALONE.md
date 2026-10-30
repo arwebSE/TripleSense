@@ -7,7 +7,7 @@ and mouse. No paid virtual-controller driver or Sunshine fork is required.
 
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.3.1-Windows-x64.exe`. The installer includes
+1. **Windows:** run `DSShine-Setup-0.4.0-Windows-x64.exe`. The installer includes
    the signed USB/IP driver, adds app-specific local-subnet firewall rules,
    and offers to disable Sunshine controller forwarding. It backs up the
    Sunshine setting and does not restart Windows or Sunshine automatically.
@@ -16,9 +16,9 @@ and mouse. No paid virtual-controller driver or Sunshine fork is required.
    and open it. Allow local-network access if macOS asks. The current preview
    is locally signed, not Developer ID signed/notarized; a downloaded preview
    may require macOS's Open Anyway action once.
-3. On Windows, click **Pair a controller computer**.
-4. On the Mac, choose the discovered game PC and
-   click **Pair with this PC**. Enter the code shown on Windows. The code is
+3. On Windows, **Server** is selected. Click **Pair client**, then **Generate code**.
+4. On the Mac, **Client** is selected. Click **Pair server**, select the discovered
+   server, enter the code shown on Windows and click **Pair and connect**. The code is
    needed once; identities are exchanged and stored automatically.
 5. Pair the DualSense to the Mac over Bluetooth and turn it on. Exit Steam on
    the physical-controller computer. Stream an ordinary Desktop/game entry
@@ -27,14 +27,14 @@ and mouse. No paid virtual-controller driver or Sunshine fork is required.
 The Windows installer offers to disable ordinary Sunshine controller
 forwarding so games see one controller. If using the portable app or a Sunshine
 installation in a different location, configure its controller setting once.
-**Finish or repair Windows setup** repairs a standard installation without a
+**Settings → Repair Windows setup** repairs a standard installation without a
 terminal. DSShine does not hide the physical pad
 from macOS. Moonlight may still use it for local UI navigation.
 
 ## Daily use
 
 Open DSShine on both computers and turn on the controller. Paired computers
-reconnect automatically. **Open DSShine when I log in** is enabled on first
+reconnect automatically. **Settings → Start DSShine when I log in** is enabled on first
 launch and can be disabled in the app. Closing the window leaves it in the
 tray/menu bar; **Quit DSShine**
 releases effects and removes its owned virtual controller.
@@ -46,7 +46,7 @@ Some games need to be restarted after a controller is recreated.
 ## Controller audio
 
 Input, ordinary vibration and adaptive triggers use the previously validated
-controller backend. **Experimental controller audio is off by default.** Enable
+controller backend. **Controller audio is off by default.** Enable
 it in the app to try controller speaker/microphone and detailed audio
 haptics. Mac Bluetooth audio still has measured stalls and dropouts, and this
 setting does not imply clean audio or game-specific haptic compatibility.
@@ -77,7 +77,8 @@ Installer firewall exceptions are
 restricted to the DSShine executable, the local subnet on Private and Public networks.
 Both computers must be reachable on the same LAN. Router client isolation,
 multicast/broadcast filtering can prevent discovery or connection. Use
-**Find my game PC** to retry. Manual addresses are preserved as a fallback.
+**Refresh** on the Client pairing screen to retry. **Enter address** offers a
+manual address field without replacing the discovered-server list.
 Paired PCs track IP changes through discovery while retaining their TLS identity.
 
 Identities expire after a year; pair again to renew them. App data is stored
@@ -87,19 +88,32 @@ Logs contain connection diagnostics, not microphone recordings.
 
 ## If setup needs attention
 
-- **No game PC found:** click **Find my game PC**. Make sure DSShine is open on
-  Windows. On the Mac, use **Open network permissions** and allow DSShine.
-- **Windows refuses a connection:** click **Finish or repair Windows setup**
+- **No server found:** click **Refresh** on the Client pairing screen. Make sure
+  DSShine is open on Windows. On the Mac, use **Settings → Network permissions**
+  and allow DSShine.
+- **Windows refuses a connection:** click **Settings → Repair Windows setup**
   and accept its administrator prompt. This repairs the driver and local-subnet
   firewall rules and configures Sunshine forwarding.
 - **Controller asleep:** press PS. DSShine waits for it and reconnects.
 - **Steam owns the controller:** close Steam on the Mac. Steam can remain open
   on the Windows game PC.
-- **Update:** use **Downloads and updates**, quit DSShine, and run the newer
+- **Update:** use **Settings → Downloads and updates**, quit DSShine, and run the newer
   Windows installer or replace the Mac app in Applications. Pairing is kept.
 
 Opening DSShine again brings its existing window forward instead of starting a
 competing controller instance.
+
+## Interface
+
+The main window uses explicit **Server** and **Client** buttons. Server runs on
+the Windows Sunshine PC; Client runs beside the controller. The connection view
+shows status, the paired computer, controller audio on the Client, and the main
+connection action. **Stop server** stops accepting the controller; **Disconnect**
+disconnects the Client. Neither action stops the Moonlight video stream.
+
+Pairing has its own screen. Discovered servers are listed by name and address;
+there is no dropdown. Settings and Logs open in separate windows. The connection
+and pairing screens do not scroll; only the server list and log contents can scroll.
 
 ## Building
 
