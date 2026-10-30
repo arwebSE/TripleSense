@@ -154,12 +154,14 @@ both roles, including an error message, visible action bounds and separation
 between the server list and code input. Mode-switch tests stop a live receiver,
 select Client, verify the saved mode, and switch back to Server on Windows.
 Audio-click tests verify a live session cannot be toggled or reconnected.
-The 53 project tests pass on
+The 54 project tests pass on
 Windows (one native skip) and macOS. Packaged Windows and Mac builds passed
 their GUI/codec smoke checks. The redesign preserves the existing audio path
 and its outstanding Mac Bluetooth quality limitations. Audio now defaults on,
 with an explicit off preference preserved. Its compact control is read-only
-while connected and explains the disconnect requirement when clicked.
+while connected and explains the disconnect requirement in a hover tooltip.
+Mode changes also require disconnecting first. The Mac Client has no mode
+selector; macOS and Linux Server backends are planned.
 A short warning appears when audio stalls. The palette uses black and charcoal,
 Apple-style blue for positive actions/status, and red for errors and the
 Disconnect/Stop server actions. Removing the universal QWidget stylesheet rule

@@ -83,7 +83,7 @@ class AppEngine:
         except OSError:
             self.notify("discovery_unavailable", None)
         await self.set_role(
-            self.preferences.get("role", "game" if sys.platform == "win32" else "controller")
+            self.preferences.get("role", "game") if sys.platform == "win32" else "controller"
         )
 
     def save(self):
@@ -112,6 +112,8 @@ class AppEngine:
 
     async def set_role(self, role):
         async with self.operation:
+            if (self.receiver or self.connection) and role != self.preferences.get("role"):
+                raise RuntimeError("Disconnect before changing mode")
             await self._stop()
             self.preferences["role"] = role
             self.save()

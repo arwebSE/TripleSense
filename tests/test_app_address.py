@@ -128,7 +128,9 @@ class DesktopTests(unittest.TestCase):
             previous = window.audio.isChecked()
             window.audio.click()
             self.assertEqual(window.audio.isChecked(), previous)
-            self.assertEqual(window.audio_status.text(), "Disconnect to change audio")
+            self.assertFalse(window.audio.isEnabled())
+            self.assertEqual(window.audio.toolTip(), "Disconnect to change audio")
+            self.assertTrue(window.audio_status.isHidden())
         finally:
             window.engine.connection = None
             window._update_actions()
@@ -154,21 +156,33 @@ class DesktopTests(unittest.TestCase):
                 whites += int(min(color.red(), color.green(), color.blue()) > 230)
         self.assertGreater(whites, 4)
 
-    def test_mode_change_stops_current_session_and_persists_new_mode(self):
+    def test_mode_change_requires_disconnect_then_persists_new_mode(self):
         window = self.window
+        if sys.platform != "win32":
+            self.assertTrue(window.mode_button.isHidden())
+            self.assertIsNone(window.mode_page)
+            return
         window.current_role = "game"
         window.preferences["role"] = "game"
+        window.preferences["game_credentials"] = "fixture"
         window._show_role()
         receiver = SimpleNamespace(stop=AsyncMock())
         window.engine.receiver = receiver
-        window.busy = True
+        window.busy = False
         window._update_actions()
+        self.assertFalse(window.mode_button.isEnabled())
+        self.assertEqual(window.mode_button.toolTip(), "Stop server to change mode")
+        window._role_changed("controller")
+        self.assertEqual(window.current_role, "game")
+        window.connect_button.click()
+        self._wait_for_mode("game")
+        receiver.stop.assert_awaited_once()
+        window.preferences.pop("game_credentials")
         self.assertTrue(window.mode_button.isEnabled())
         window.mode_button.click()
         self.assertIs(window.pages.currentWidget(), window.mode_page)
         window.client.click()
         self._wait_for_mode("controller")
-        receiver.stop.assert_awaited_once()
         self.assertIsNone(window.engine.receiver)
         self.assertTrue(window.role_caption.text().startswith("CLIENT"))
         self.assertIs(window.pages.currentWidget(), window.connection_page)
@@ -179,6 +193,15 @@ class DesktopTests(unittest.TestCase):
             window.server.click()
             self._wait_for_mode("game")
             self.assertTrue(window.role_caption.text().startswith("SERVER"))
+
+    def test_platform_mode_selection_matches_supported_server_backend(self):
+        if sys.platform == "win32":
+            self.assertIsNotNone(self.window.mode_page)
+            self.assertFalse(self.window.mode_button.isHidden())
+        else:
+            self.assertIsNone(self.window.mode_page)
+            self.assertTrue(self.window.mode_button.isHidden())
+            self.assertEqual(self.window.current_role, "controller")
 
     def _wait_for_mode(self, role):
         deadline = time.monotonic() + 2

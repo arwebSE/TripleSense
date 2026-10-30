@@ -5,7 +5,7 @@
 [Setup]
 AppId={{E0B8344E-9715-4E9F-B769-0E0C7B51D65A}
 AppName=DSShine
-AppVersion=0.4.2
+AppVersion=0.4.3
 AppPublisher=DSShine contributors
 AppPublisherURL=https://github.com/arwebSE/DSShine
 DefaultDirName={autopf}\DSShine
@@ -15,7 +15,7 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64os
 ArchitecturesInstallIn64BitMode=x64os
 OutputDir={#ProjectRoot}\dist
-OutputBaseFilename=DSShine-Setup-0.4.2-Windows-x64
+OutputBaseFilename=DSShine-Setup-0.4.3-Windows-x64
 Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern

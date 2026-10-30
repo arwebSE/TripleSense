@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from datetime import datetime
 
-from PySide6.QtCore import QPointF, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QEvent, QObject, QPointF, QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import (
     QAction,
     QColor,
@@ -75,11 +75,28 @@ class PageStack(QStackedWidget):
         return page.minimumSizeHint() if page else super().minimumSizeHint()
 
 
-class AudioSwitch(QCheckBox):
-    lockedClick = Signal()
+class DisabledTooltips(QObject):
+    """Keep native hover help available when a control cannot be used."""
 
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.ToolTip and isinstance(watched, QWidget):
+            target = QApplication.widgetAt(event.globalPos()) or watched
+            owner = self.parent()
+            if owner.isAncestorOf(target) and not target.isEnabled() and target.toolTip():
+                QToolTip.showText(event.globalPos(), target.toolTip(), target)
+                return True
+        return False
+
+
+class AudioSwitch(QCheckBox):
     def setLocked(self, locked):
         self.setProperty("locked", locked)
+        self.setEnabled(not locked)
+        self.setToolTip(
+            "Disconnect to change audio"
+            if locked
+            else "Forward the controller speaker, microphone and audio haptics."
+        )
         self.setAccessibleDescription(
             "Disconnect to change audio" if locked else "Controller audio"
         )
@@ -88,15 +105,6 @@ class AudioSwitch(QCheckBox):
         self.setCursor(
             Qt.CursorShape.ForbiddenCursor if locked else Qt.CursorShape.PointingHandCursor
         )
-
-    def nextCheckState(self):
-        if self.property("locked"):
-            QToolTip.showText(
-                self.mapToGlobal(self.rect().bottomLeft()), "Disconnect to change audio", self
-            )
-            self.lockedClick.emit()
-        else:
-            super().nextCheckState()
 
 
 class Window(QMainWindow):
@@ -114,10 +122,14 @@ class Window(QMainWindow):
         self.current_role = self.preferences.get(
             "role", "game" if sys.platform == "win32" else "controller"
         )
+        if sys.platform != "win32":
+            self.current_role = "controller"
         self.setWindowTitle("DSShine")
         self.resize(640, 410)
         self.setMinimumWidth(600)
         self._build()
+        self.tooltip_filter = DisabledTooltips(self)
+        QApplication.instance().installEventFilter(self.tooltip_filter)
         self._tray()
         self._show_role()
         self._refresh_computers()
@@ -171,6 +183,7 @@ class Window(QMainWindow):
         title = label("DSShine", "brand")
         header.addWidget(title, 1)
         self.mode_button = button("Change mode", self._open_modes)
+        self.mode_button.setVisible(sys.platform == "win32")
         header.addWidget(self.mode_button)
         outer.addLayout(header)
         self.role_caption = label("", "muted")
@@ -178,10 +191,12 @@ class Window(QMainWindow):
         self.pages = PageStack()
         self.connection_page = self._connection_page()
         self.pair_page = self._pair_page()
-        self.mode_page = self._mode_page()
+        self.server = self.client = None
+        self.mode_page = self._mode_page() if sys.platform == "win32" else None
         self.pages.addWidget(self.connection_page)
         self.pages.addWidget(self.pair_page)
-        self.pages.addWidget(self.mode_page)
+        if self.mode_page:
+            self.pages.addWidget(self.mode_page)
         self.pages.currentChanged.connect(self._fit_page)
         outer.addWidget(self.pages, 1)
         footer = QHBoxLayout()
@@ -271,6 +286,8 @@ class Window(QMainWindow):
         return page
 
     def _open_modes(self):
+        if self.mode_page is None or self.engine.receiver or self.engine.connection or self.busy:
+            return
         self.pages.setCurrentWidget(self.mode_page)
         self._fit_page()
 
@@ -304,7 +321,6 @@ class Window(QMainWindow):
         self.audio.setChecked(bool(self.preferences.get("audio", True)))
         self.audio.setToolTip("Forward the controller speaker, microphone and audio haptics.")
         self.audio.toggled.connect(self._change_audio)
-        self.audio.lockedClick.connect(self._audio_locked_feedback)
         audio_layout.addWidget(self.audio)
         self.audio_status = label("", "muted", wrap=True)
         audio_layout.addWidget(self.audio_status, 1)
@@ -455,8 +471,9 @@ class Window(QMainWindow):
 
     def _show_role(self):
         server = self.current_role == "game"
-        self.server.setChecked(server)
-        self.client.setChecked(not server)
+        if self.server:
+            self.server.setChecked(server)
+            self.client.setChecked(not server)
         self.role_caption.setText(
             "SERVER · Windows PC running Sunshine"
             if server
@@ -533,24 +550,32 @@ class Window(QMainWindow):
         self.audio.setLocked(locked)
         if was_locked and not locked:
             self.audio_status.hide()
-        if sys.platform != "win32":
-            self.server.setEnabled(False)
-
-    def _audio_locked_feedback(self):
-        self.audio_status.setText("Disconnect to change audio")
-        self._tone(self.audio_status, "info")
-        self.audio_status.show()
+        mode_locked = active or self.busy
+        self.mode_button.setEnabled(not mode_locked)
+        self.mode_button.setToolTip(
+            ("Stop server to change mode" if server else "Disconnect to change mode")
+            if active
+            else "Wait for the current action to finish"
+            if self.busy
+            else ""
+        )
+        if self.server:
+            self.server.setEnabled(not mode_locked)
+            self.client.setEnabled(not mode_locked)
+            for choice in (self.server, self.client):
+                choice.setToolTip(self.mode_button.toolTip())
 
     def _change_audio(self, enabled):
         if self.engine.connection or self.busy:
             self.audio.blockSignals(True)
             self.audio.setChecked(bool(self.preferences.get("audio", True)))
             self.audio.blockSignals(False)
-            self._audio_locked_feedback()
             return
         self._perform(self.engine.set_audio(enabled))
 
     def _role_changed(self, role):
+        if sys.platform != "win32" or self.engine.receiver or self.engine.connection or self.busy:
+            return
         if role == self.current_role:
             self._back()
             return
@@ -714,6 +739,25 @@ class Window(QMainWindow):
         widget.update()
 
     @staticmethod
+    def _error_heading(message):
+        if "Expected one Bluetooth DualSense" in message:
+            return "Controller disconnected" if "found 0" in message else "Select one controller"
+        if "Steam is running" in message:
+            return "Steam is using the controller"
+        if "CERTIFICATE_VERIFY_FAILED" in message:
+            return "Pairing no longer valid"
+        if "Pairing failed" in message:
+            return "Pairing failed"
+        if "10048" in message or "Address already in use" in message:
+            return "Another DSShine copy is running"
+        if any(
+            text in message
+            for text in ("route", "Connect call failed", "refused", "10060", "timed out")
+        ):
+            return "Server unreachable"
+        return "Couldn't connect"
+
+    @staticmethod
     def _friendly_error(message):
         if "Expected one Bluetooth DualSense" in message:
             return "Press PS to connect your DualSense to this Client over Bluetooth."
@@ -773,11 +817,15 @@ class Window(QMainWindow):
             self.audio.blockSignals(True)
             self.audio.setChecked(bool(self.preferences.get("audio", True)))
             self.audio.blockSignals(False)
-            self._audio_locked_feedback()
+            return
+        if kind == "error" and message == "Disconnect before changing mode":
+            self.current_role = self.preferences["role"]
+            self._show_role()
+            self._back()
             return
         if kind == "error":
             self._tone(self.pair_error, "danger")
-            self.status.setText("Connection needs attention")
+            self.status.setText(self._error_heading(message))
             self.description.setText(self._friendly_error(message))
             self.pair_error.setText(self._friendly_error(message))
             self.connected = False

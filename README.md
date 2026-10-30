@@ -39,6 +39,7 @@ claim is made. See [validation evidence](docs/VALIDATION.md).
 ## Development
 
 [Architecture](docs/ARCHITECTURE.md) · [Developer tools and CLI](docs/DEVELOPMENT.md)
+· [Planned platform support](docs/ROADMAP.md)
 
 The bridge builds on the MIT-licensed
 [ds5-virtual-cable](https://github.com/Macle57/ds5-virtual-cable), pinned under
