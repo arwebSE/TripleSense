@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
+from pathlib import Path
 
 from PySide6.QtCore import QEvent, QObject, QPointF, QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import (
@@ -11,6 +12,7 @@ from PySide6.QtGui import (
     QColor,
     QDesktopServices,
     QFont,
+    QIcon,
     QPainter,
     QPalette,
     QPen,
@@ -180,6 +182,12 @@ class Window(QMainWindow):
         outer.setContentsMargins(24, 20, 24, 16)
         outer.setSpacing(12)
         header = QHBoxLayout()
+        mark = QLabel()
+        mark.setPixmap(
+            QIcon(str(Path(__file__).with_name("assets") / "dsshine.svg")).pixmap(36, 36)
+        )
+        mark.setFixedSize(36, 36)
+        header.addWidget(mark)
         title = label("DSShine", "brand")
         header.addWidget(title, 1)
         self.mode_button = button("Change mode", self._open_modes)
@@ -364,7 +372,14 @@ class Window(QMainWindow):
         server.addWidget(self.pin_hint)
         server.addStretch(1)
         self.generate = button("Generate code", self._generate_code, primary=True)
-        server.addWidget(self.generate)
+        code_actions = QHBoxLayout()
+        code_actions.addStretch(1)
+        code_actions.addWidget(self.generate)
+        self.copy_code = button("Copy code", self._copy_code)
+        self.copy_code.setEnabled(False)
+        code_actions.addWidget(self.copy_code)
+        code_actions.addStretch(1)
+        server.addLayout(code_actions)
         layout.addWidget(self.server_pair, 1)
         self.client_pair = QWidget()
         client = QVBoxLayout(self.client_pair)
@@ -402,9 +417,9 @@ class Window(QMainWindow):
         code_row = QHBoxLayout()
         code_row.addWidget(label("Pairing code"), 1)
         self.code = QLineEdit()
-        self.code.setPlaceholderText("8-digit code from Server")
-        self.code.setMaxLength(11)
-        self.code.setFixedWidth(250)
+        self.code.setPlaceholderText("4-digit code from Server")
+        self.code.setMaxLength(4)
+        self.code.setFixedWidth(210)
         self.code.returnPressed.connect(self._pair_client)
         code_row.addWidget(self.code)
         client.addLayout(code_row)
@@ -655,8 +670,8 @@ class Window(QMainWindow):
             self.pair_error.setText("Select a server, or enter its address.")
             return
         code = self.code.text().replace(" ", "").replace("-", "")
-        if len(code) != 8 or not code.isascii() or not code.isdigit():
-            self.pair_error.setText("Enter the 8-digit code shown in the Server app.")
+        if len(code) != 4 or not code.isascii() or not code.isdigit():
+            self.pair_error.setText("Enter the 4-digit code shown in the Server app.")
             self.code.setFocus()
             return
         self.engine.submit(self.engine.update_preferences("game_address", address))
@@ -793,9 +808,12 @@ class Window(QMainWindow):
             self._update_actions()
             return
         if kind == "pair_code":
-            self.pin.setText(value[:4] + " " + value[4:] if value else "Code expired")
+            self.pin.setText(value if value else "Code expired")
+            self.copy_code.setEnabled(bool(value))
+            if value:
+                self._copy_code()
             self.pin_hint.setText(
-                "Code expires in 2 minutes."
+                "Copied to clipboard. Expires in 2 minutes."
                 if value
                 else "Generate a new code to continue pairing."
             )
@@ -905,9 +923,13 @@ class Window(QMainWindow):
         self._update_peer()
         self._update_actions()
 
+    def _copy_code(self):
+        if self.copy_code.isEnabled():
+            QApplication.clipboard().setText(self.pin.text())
+
     def _tray(self):
         self.tray = QSystemTrayIcon(
-            self.style().standardIcon(self.style().StandardPixmap.SP_ComputerIcon), self
+            QIcon(str(Path(__file__).with_name("assets") / "dsshine.svg")), self
         )
         self.setWindowIcon(self.tray.icon())
         self.tray.setToolTip("DSShine")

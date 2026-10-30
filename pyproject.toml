@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "DSShine"
-version = "0.4.3"
+version = "0.4.4"
 description = "Full DualSense USB device bridge alongside Sunshine and Moonlight"
 requires-python = ">=3.11"
 license = "MIT"
@@ -31,6 +31,9 @@ dsshine-app = "dualsensedriver.app:main"
 
 [tool.setuptools]
 packages = ["dualsensedriver", "ds5emu", "ds5bridge"]
+
+[tool.setuptools.package-data]
+dualsensedriver = ["assets/*"]
 
 [tool.setuptools.package-dir]
 dualsensedriver = "src/dualsensedriver"

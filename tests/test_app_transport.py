@@ -32,6 +32,8 @@ class AppPairingTests(unittest.IsolatedAsyncioTestCase):
         self.tmp.cleanup()
 
     async def test_pin_exchanges_separate_credentials_and_reverse_tls_works(self):
+        self.assertEqual(len(self.offer.code), 4)
+        self.assertTrue(self.offer.code.isascii() and self.offer.code.isdigit())
         profile = await pair_controller(
             "127.0.0.1", self.offer.code, self.root / "controller", port=self.offer.port
         )
@@ -73,7 +75,7 @@ class AppPairingTests(unittest.IsolatedAsyncioTestCase):
             await controller.stop()
 
     async def test_wrong_pin_is_rejected_without_saving_client_keys(self):
-        wrong = "00000000" if self.offer.code != "00000000" else "11111111"
+        wrong = "0000" if self.offer.code != "0000" else "1111"
         with self.assertRaises(ValueError):
             await pair_controller(
                 "127.0.0.1", wrong, self.root / "controller", port=self.offer.port

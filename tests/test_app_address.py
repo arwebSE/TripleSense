@@ -99,8 +99,14 @@ class DesktopTests(unittest.TestCase):
                     self.assertLess(choices_bottom, code_top)
 
     def test_pairing_code_never_enters_logs(self):
-        self.window.on_event("pair_code", "12345678")
-        self.assertEqual(self.window.pin.text(), "1234 5678")
+        self.window.on_event("pair_code", "1234")
+        self.assertEqual(self.window.pin.text(), "1234")
+        self.assertEqual(self.application.clipboard().text(), "1234")
+        self.application.clipboard().setText("other")
+        self.window.copy_code.click()
+        self.assertEqual(self.application.clipboard().text(), "1234")
+        self.window.on_event("pair_code", "")
+        self.assertFalse(self.window.copy_code.isEnabled())
         self.assertNotIn("1234", self.window.details.toPlainText())
 
     def test_connected_status_and_disconnect_action_have_different_intents(self):

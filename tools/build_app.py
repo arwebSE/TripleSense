@@ -91,6 +91,14 @@ def main():
         "--clean",
         "--windowed",
         "--onedir",
+        "--icon",
+        str(
+            ROOT
+            / "src/dualsensedriver/assets"
+            / ("dsshine.ico" if sys.platform == "win32" else "dsshine.icns")
+        ),
+        "--add-data",
+        str(ROOT / "src/dualsensedriver/assets") + ":dualsensedriver/assets",
         "--name",
         "DSShine",
         "--distpath",

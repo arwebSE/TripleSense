@@ -7,7 +7,7 @@ and mouse. No paid virtual-controller driver or Sunshine fork is required.
 
 ## First setup
 
-1. **Windows:** run `DSShine-Setup-0.4.3-Windows-x64.exe`. The installer includes
+1. **Windows:** run `DSShine-Setup-0.4.4-Windows-x64.exe`. The installer includes
    the signed USB/IP driver, adds app-specific local-subnet firewall rules,
    and offers to disable Sunshine controller forwarding. It backs up the
    Sunshine setting and does not restart Windows or Sunshine automatically.
@@ -65,7 +65,10 @@ Sunshine-only advertisement is labelled with a reminder to open DSShine there.
 The Windows app listens for the controller connection; the Mac makes outgoing
 connections, so it needs no incoming firewall exception or SSH login.
 
-The eight-digit pairing code uses SPAKE2 password-authenticated key exchange,
+New codes are copied to the Server clipboard automatically; **Copy code** copies
+the displayed code again. Codes expire after two minutes and allow five attempts.
+
+The four-digit pairing code uses SPAKE2 password-authenticated key exchange,
 with authenticated encryption and key confirmation for the credential transfer.
 Pairing allows at most five attempts, expires after two minutes, and enrols one
 controller computer per code. Subsequent connections use mutual TLS 1.3.

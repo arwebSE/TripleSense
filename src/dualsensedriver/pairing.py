@@ -77,7 +77,7 @@ class PairingOffer:
         self.on_paired = on_paired
         self.host, self.port, self.stream_port = host, port, stream_port
         self.host_id = host_id
-        self.code = f"{secrets.randbelow(100_000_000):08d}"
+        self.code = f"{secrets.randbelow(10_000):04d}"
         self.expires = time.monotonic() + 120
         self.attempts = 0
         self.busy = False
@@ -166,8 +166,8 @@ class PairingOffer:
 
 async def pair_controller(address, code, root, *, port=PAIR_PORT):
     code = code.replace(" ", "").replace("-", "")
-    if len(code) != 8 or not code.isascii() or not code.isdigit():
-        raise ValueError("Enter the eight-digit code shown on the game PC")
+    if len(code) != 4 or not code.isascii() or not code.isdigit():
+        raise ValueError("Enter the four-digit code shown on the game PC")
     exchange = SPAKE2_A(code.encode("ascii"), **IDENTITIES)
     message_a = await asyncio.to_thread(exchange.start)
     reader, writer = await asyncio.wait_for(asyncio.open_connection(address, port), 5)
