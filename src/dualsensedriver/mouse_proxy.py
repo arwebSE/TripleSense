@@ -6,9 +6,12 @@ are forwarded unchanged; only successful endpoint-4 HID input is interpreted.
 
 from __future__ import annotations
 
+import logging
 import struct
 
 from ds5emu import wire as W
+
+log = logging.getLogger(__name__)
 
 
 async def forward_responses(reader, writer, mouse_factory):
@@ -42,6 +45,7 @@ async def forward_responses(reader, writer, mouse_factory):
 
 
 async def _urb_responses(reader, writer, mouse):
+    first_input = True
     while True:
         header = await reader.readexactly(W.HEADER_SIZE)
         command = struct.unpack_from(">I", header)[0]
@@ -55,7 +59,15 @@ async def _urb_responses(reader, writer, mouse):
             raise ValueError("Invalid USB/IP response length")
         payload = await reader.readexactly(length if fields["direction"] == W.DIR_IN else 0)
         iso = await reader.readexactly(packets * W.ISO_DESC_SIZE)
-        if fields["direction"] == W.DIR_IN and fields["ep"] in (0, 4) and fields["status"] == 0:
+        endpoint = fields["ep"] & 0x7F
+        if fields["direction"] == W.DIR_IN and endpoint in (0, 4) and fields["status"] == 0:
+            if first_input and payload:
+                log.info(
+                    "Mouse filter received HID input: endpoint=%s bytes=%s",
+                    fields["ep"],
+                    len(payload),
+                )
+                first_input = False
             payload = mouse.on_input(payload)
         writer.write(header + payload + iso)
         await writer.drain()

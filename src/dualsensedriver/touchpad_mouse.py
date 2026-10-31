@@ -8,10 +8,13 @@ The USB decoder is the already-vendored upstream implementation.
 
 from __future__ import annotations
 
+import logging
 import math
 import time
 
 from ds5bridge.protocol import decode_input
+
+log = logging.getLogger(__name__)
 
 
 class TouchpadMouse:
@@ -26,6 +29,8 @@ class TouchpadMouse:
         self.held = None
         self.fraction = [0.0, 0.0]
         self.scroll = 0.0
+        self.logged_touch = False
+        self.logged_move = False
 
     def on_input(self, report):
         if len(report) != 64 or report[0] != 1:
@@ -35,6 +40,9 @@ class TouchpadMouse:
             return report
         points = sorted((point.id, point.x, point.y) for point in state.touch if point.active)
         fingers = len(points)
+        if fingers and not self.logged_touch:
+            log.info("Mouse filter detected touch contacts: %s", fingers)
+            self.logged_touch = True
         center = (
             (sum(p[1] for p in points) / fingers, sum(p[2] for p in points) / fingers)
             if fingers
@@ -67,6 +75,9 @@ class TouchpadMouse:
                     value - integer for value, integer in zip(movement, whole, strict=True)
                 ]
                 if any(whole):
+                    if not self.logged_move:
+                        log.info("Mouse filter sending pointer movement")
+                        self.logged_move = True
                     self.output.move(*whole)
             elif fingers == 2 and not click:
                 self.scroll += -dy / 20

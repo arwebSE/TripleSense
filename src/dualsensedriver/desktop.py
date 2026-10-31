@@ -175,6 +175,7 @@ class Window(QMainWindow):
         self.busy = self.connected = self.quitting = self.closing = self.pairing_client = False
         self.starting_connection = False
         self.action = None
+        self.pending_update = None
         self.current_role = self.preferences.get(
             "role", "game" if sys.platform == "win32" else "controller"
         )
@@ -199,6 +200,8 @@ class Window(QMainWindow):
         if not smoke_test:
             self.retry.start(4000)
             self._perform(self.engine.initialize())
+            if self.preferences.get("check_updates", True):
+                QTimer.singleShot(5000, self.updater.check)
 
     def _build(self):
         # A small HiDPI UI glyph; native scrollbars remain entirely unstyled.
@@ -268,6 +271,9 @@ class Window(QMainWindow):
         outer.addWidget(self.pages, 1)
         footer = QHBoxLayout()
         footer.addWidget(label("v" + __version__, "muted"), 1)
+        self.update_notice = button("Update available", lambda: self.updater.show())
+        self.update_notice.hide()
+        footer.addWidget(self.update_notice)
         footer.addWidget(button("Logs", self._open_logs))
         footer.addWidget(button("Settings", self._open_settings))
         outer.addLayout(footer)
@@ -572,17 +578,27 @@ class Window(QMainWindow):
         )
         layout.addWidget(self.setup_note)
         layout.addWidget(button("Network permissions…", self._open_network_permissions))
-        layout.addWidget(
-            button(
-                "Downloads and updates…",
-                lambda: QDesktopServices.openUrl(
-                    QUrl("https://github.com/arwebSE/TripleSense/releases")
-                ),
+        from .update_dialog import UpdateDialog
+
+        self.updater = UpdateDialog(self)
+        self.updater.available.connect(lambda _version: self.update_notice.show())
+        self.check_updates = QCheckBox("Check for updates automatically")
+        self.check_updates.setChecked(self.preferences.get("check_updates", True))
+        self.check_updates.toggled.connect(
+            lambda enabled: self.engine.submit(
+                self.engine.update_preferences("check_updates", enabled)
             )
         )
+        layout.addWidget(self.check_updates)
+        layout.addWidget(button("Updates…", self._open_updates))
         close = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         close.rejected.connect(self.settings.hide)
         layout.addWidget(close)
+
+    def _open_updates(self):
+        self.updater.show()
+        if not self.updater.release:
+            self.updater.check()
 
     def _build_logs(self):
         self.logs = QDialog(self)
@@ -1267,6 +1283,11 @@ class Window(QMainWindow):
                 return
             try:
                 future.result()
+                if self.pending_update:
+                    from .updates import launch_installer
+
+                    package, mac_stage = self.pending_update
+                    launch_installer(package, self.root, mac_stage=mac_stage)
             except Exception as exc:
                 self.closing = False
                 self.busy = False

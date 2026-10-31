@@ -72,6 +72,8 @@ If macOS blocks the downloaded preview, see
 [Apple's instructions for opening it](https://support.apple.com/en-gb/102445).
 For connection problems, see [setup and troubleshooting](docs/STANDALONE.md).
 
+In-app updates are being added in the next release; see [app updates](docs/UPDATES.md).
+
 ---
 
 For contributors: [development guide](docs/DEVELOPMENT.md) ·

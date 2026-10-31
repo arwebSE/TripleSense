@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from . import saved_servers
+from . import __version__, saved_servers
 from .app_support import (
     Discovery,
     app_directory,
@@ -396,6 +396,33 @@ class AppEngine:
         await self.loop.shutdown_asyncgens()
         await self.loop.shutdown_default_executor()
 
+    async def diagnostics(self):
+        result = {"version": __version__, "role": self.preferences.get("role")}
+        if self.receiver:
+            result["server"] = {
+                "attached": self.receiver.owned_port is not None,
+                "mouse_enabled": self.receiver.touchpad_mouse,
+                "last_error": self.receiver.last_error,
+            }
+        if self.connection:
+            backend = self.connection.backend
+            result["controller"] = {
+                "status": backend.device_status(),
+                "stats": backend.stats.copy(),
+                "threads": [(t.name, t.is_alive()) for t in backend._threads],
+                "stopping": backend._stop.is_set(),
+            }
+            device = backend._dev
+            handle = device.h if device else None
+            if hasattr(handle, "_input"):
+                result["controller"]["native"] = {
+                    "queued_reports": handle._input.qsize(),
+                    "buffered_bytes": len(handle._buffer),
+                    "closed": handle._closed.is_set(),
+                    "error": handle._error,
+                }
+        return result
+
 
 from .desktop import Window  # noqa: E402
 
@@ -486,6 +513,8 @@ def main(argv=None):
             peer.waitForBytesWritten(1500)
         return 0
     logging.basicConfig(level=logging.WARNING, filename=root / "app.log", encoding="utf-8")
+    for name in ("mouse_proxy", "touchpad_mouse"):
+        logging.getLogger(f"dualsensedriver.{name}").setLevel(logging.INFO)
     # cython-hidapi initializes IOHIDManager at import and finalizes at atexit.
     # macOS requires that owner thread to survive until hid_exit, on that same
     # thread. Import before the engine can first import it in an executor.
@@ -506,6 +535,23 @@ def main(argv=None):
 
         def command():
             message = bytes(peer.readAll())
+            if message == b"diagnostics":
+                future = asyncio.run_coroutine_threadsafe(
+                    window.engine.diagnostics(), window.engine.loop
+                )
+
+                def respond():
+                    if not future.done():
+                        QTimer.singleShot(25, respond)
+                        return
+                    try:
+                        peer.write(json.dumps(future.result()).encode())
+                        peer.disconnectFromServer()
+                    except (RuntimeError, OSError):
+                        pass
+
+                respond()
+                return
             if message == b"quit":
                 window.quit()
             elif message == b"show":

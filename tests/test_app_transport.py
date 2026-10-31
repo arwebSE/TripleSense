@@ -110,9 +110,13 @@ class AppPairingTests(unittest.IsolatedAsyncioTestCase):
             client = await Client.connect(receiver.local_port)
             try:
                 self.assertIsNotNone(await client.attach())
-                for points in ((), ((1, 100, 100),), ((1, 140, 110),)):
+                for endpoint, points in (
+                    (4, ()),
+                    (0x84, ((1, 100, 100),)),
+                    (0x84, ((1, 140, 110),)),
+                ):
                     current = report(points)
-                    result, masked = await client.submit(direction=W.DIR_IN, ep=4, length=64)
+                    result, masked = await client.submit(direction=W.DIR_IN, ep=endpoint, length=64)
                     self.assertEqual(result["status"], 0)
                     self.assertEqual(masked[:33], current[:33])
                     self.assertTrue(masked[33] & 0x80)
