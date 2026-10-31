@@ -1,5 +1,13 @@
 # Third-party code
 
+`src/dualsensedriver/touchpad_mouse.py` adapts contact tracking and gesture logic
+from MIT-licensed `app/ds5app/intercept.py` in Macle57/ds5-virtual-cable at
+`c99dd9c519bebd508ff814fa7aedced0c0c443b6`. The upstream MIT license and copyright
+notices are retained in `vendor/ds5-virtual-cable/LICENSE` and `NOTICE`.
+The adaptation uses our existing upstream report decoder; Windows-only actions,
+shortcuts and the custom keyboard are not copied. Linux pointer injection uses
+python-evdev (Revised BSD), included with its license in Linux builds.
+
 `vendor/ds5-virtual-cable` contains a subset of
 [Macle57/ds5-virtual-cable](https://github.com/Macle57/ds5-virtual-cable), pinned to
 commit `2e24ffbfafd6d9ccd454a9a8b436e2696be426ce` (MIT).
@@ -34,3 +42,7 @@ and dynamically linked Qt/PySide under the LGPL option. See
 
 LibrePadPS5, ViGEmBus, Sunshine, Moonlight, libvirtualhid and libvirtualgamepad
 were reviewed as references; no source from those projects is included.
+
+The app updater uses `keyring` (MIT) and its platform backends to store optional
+private-release credentials in the operating system credential store. The build
+includes its license and the licenses for its bundled runtime dependencies.

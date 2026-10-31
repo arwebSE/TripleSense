@@ -314,7 +314,7 @@ class DesktopTests(unittest.TestCase):
 
     def test_mode_change_requires_disconnect_then_persists_new_mode(self):
         window = self.window
-        if sys.platform != "win32":
+        if sys.platform == "darwin":
             self.assertTrue(window.mode_button.isHidden())
             self.assertIsNone(window.mode_page)
             return
@@ -344,14 +344,14 @@ class DesktopTests(unittest.TestCase):
         self.assertIs(window.pages.currentWidget(), window.pair_page)
         settings = json.loads((window.root / "settings.json").read_text())
         self.assertEqual(settings["role"], "controller")
-        if sys.platform == "win32":
+        if sys.platform != "darwin":
             window.mode_button.click()
             window.server.click()
             self._wait_for_mode("game")
             self.assertTrue(window.role_caption.text().startswith("SERVER"))
 
     def test_platform_mode_selection_matches_supported_server_backend(self):
-        if sys.platform == "win32":
+        if sys.platform != "darwin":
             self.assertIsNotNone(self.window.mode_page)
             self.assertFalse(self.window.mode_button.isHidden())
         else:

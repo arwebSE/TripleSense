@@ -13,6 +13,7 @@ from dualsensedriver.pairing import PairingOffer, pair_controller
 from dualsensedriver.reverse import ControllerConnection, GameReceiver
 from dualsensedriver.transport import release_report
 
+from .test_touchpad_mouse import Output, report
 from .wire_client import Client
 
 
@@ -85,12 +86,59 @@ class AppPairingTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse((self.root / "controller").exists())
         self.assertEqual(self.offer.attempts, 1)
 
+    async def test_touchpad_mouse_works_through_paired_tls_and_releases_output(self):
+        profile = await pair_controller(
+            "127.0.0.1", self.offer.code, self.root / "controller", port=self.offer.port
+        )
+        output = Output()
+        backend = SyntheticBackend()
+        current = report()
+        backend.read_input_report = lambda length: current[:length]
+        receiver = GameReceiver(
+            self.paired[0][0],
+            lambda *args: None,
+            port=0,
+            bind="127.0.0.1",
+            touchpad_mouse=True,
+        )
+        with patch("dualsensedriver.mouse_output.create_mouse", return_value=output):
+            await receiver.start()
+        profile["port"] = receiver.port
+        controller = ControllerConnection(profile, backend, lambda *args: None)
+        try:
+            await controller.start()
+            client = await Client.connect(receiver.local_port)
+            try:
+                self.assertIsNotNone(await client.attach())
+                for endpoint, points in (
+                    (4, ()),
+                    (0x84, ((1, 100, 100),)),
+                    (0x84, ((1, 140, 110),)),
+                ):
+                    current = report(points)
+                    result, masked = await client.submit(direction=W.DIR_IN, ep=endpoint, length=64)
+                    self.assertEqual(result["status"], 0)
+                    self.assertEqual(masked[:33], current[:33])
+                    self.assertTrue(masked[33] & 0x80)
+                self.assertTrue(any(event[0] == "move" for event in output.events))
+                effect = build_usb_setstate(
+                    bytes(SetState().trigger_right(0x21, b"\x01" * 10).body)
+                )
+                await client.submit(direction=W.DIR_OUT, ep=3, data=effect)
+                self.assertEqual(backend.output_reports[-1], effect)
+            finally:
+                await client.close()
+        finally:
+            await receiver.stop()
+            await controller.stop()
+        self.assertEqual(output.events[-1], ("close",))
+
     async def test_network_timeout_has_actionable_message(self):
         with patch(
             "dualsensedriver.pairing.asyncio.open_connection", new_callable=AsyncMock
         ) as dial:
             dial.side_effect = TimeoutError()
-            with self.assertRaisesRegex(TimeoutError, "VPN connection and Windows firewall"):
+            with self.assertRaisesRegex(TimeoutError, "VPN connection and server firewall"):
                 await pair_controller("100.97.43.25", self.offer.code, self.root / "client")
         self.assertFalse((self.root / "client").exists())
 

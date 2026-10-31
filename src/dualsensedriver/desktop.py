@@ -175,10 +175,11 @@ class Window(QMainWindow):
         self.busy = self.connected = self.quitting = self.closing = self.pairing_client = False
         self.starting_connection = False
         self.action = None
+        self.pending_update = None
         self.current_role = self.preferences.get(
             "role", "game" if sys.platform == "win32" else "controller"
         )
-        if sys.platform != "win32":
+        if sys.platform == "darwin":
             self.current_role = "controller"
         self.setWindowTitle("TripleSense")
         self.resize(640, 410)
@@ -199,6 +200,8 @@ class Window(QMainWindow):
         if not smoke_test:
             self.retry.start(4000)
             self._perform(self.engine.initialize())
+            if self.preferences.get("check_updates", True):
+                QTimer.singleShot(5000, self.updater.check)
 
     def _build(self):
         # A small HiDPI UI glyph; native scrollbars remain entirely unstyled.
@@ -249,7 +252,7 @@ class Window(QMainWindow):
         title = label("TripleSense", "brand")
         header.addWidget(title, 1)
         self.mode_button = button("Change mode", self._open_modes)
-        self.mode_button.setVisible(sys.platform == "win32")
+        self.mode_button.setVisible(sys.platform != "darwin")
         header.addWidget(self.mode_button)
         outer.addLayout(header)
         self.role_caption = label("", "muted")
@@ -258,7 +261,7 @@ class Window(QMainWindow):
         self.connection_page = self._connection_page()
         self.pair_page = self._pair_page()
         self.server = self.client = None
-        self.mode_page = self._mode_page() if sys.platform == "win32" else None
+        self.mode_page = self._mode_page() if sys.platform != "darwin" else None
         self.pages.addWidget(self.connection_page)
         self.pages.addWidget(self.pair_page)
         if self.mode_page:
@@ -268,6 +271,9 @@ class Window(QMainWindow):
         outer.addWidget(self.pages, 1)
         footer = QHBoxLayout()
         footer.addWidget(label("v" + __version__, "muted"), 1)
+        self.update_notice = button("Update available", lambda: self.updater.show())
+        self.update_notice.hide()
+        footer.addWidget(self.update_notice)
         footer.addWidget(button("Logs", self._open_logs))
         footer.addWidget(button("Settings", self._open_settings))
         outer.addLayout(footer)
@@ -334,7 +340,7 @@ class Window(QMainWindow):
             label("Changing mode disconnects the current controller session.", "muted", wrap=True)
         )
         self.server = button(
-            "Server\nMakes a DualSense available on this Windows PC",
+            "Server\nMakes a DualSense available on this computer",
             lambda: self._role_changed("game"),
         )
         self.client = button(
@@ -348,8 +354,8 @@ class Window(QMainWindow):
             choice.setObjectName("mode")
             choice.setMinimumHeight(68)
             layout.addWidget(choice)
-        if sys.platform != "win32":
-            self.server.setText("Server\nRequires Windows")
+        if sys.platform == "darwin":
+            self.server.setText("Server\nRequires Apple's virtual HID entitlement")
         layout.addStretch(1)
         return page
 
@@ -556,6 +562,15 @@ class Window(QMainWindow):
             )
         )
         layout.addWidget(self.auto)
+        self.mouse = QCheckBox("Use touchpad as mouse")
+        self.mouse.setChecked(bool(self.preferences.get("touchpad_mouse", False)))
+        self.mouse.setToolTip("One finger moves; tap or click selects; two fingers scroll.")
+        self.mouse.toggled.connect(
+            lambda enabled: self.engine.submit(
+                self.engine.update_preferences("touchpad_mouse", enabled)
+            )
+        )
+        layout.addWidget(self.mouse)
         self.repair_button = button("Repair Windows setup…", self._repair_setup)
         layout.addWidget(self.repair_button)
         self.setup_note = label(
@@ -563,17 +578,27 @@ class Window(QMainWindow):
         )
         layout.addWidget(self.setup_note)
         layout.addWidget(button("Network permissions…", self._open_network_permissions))
-        layout.addWidget(
-            button(
-                "Downloads and updates…",
-                lambda: QDesktopServices.openUrl(
-                    QUrl("https://github.com/arwebSE/TripleSense/releases")
-                ),
+        from .update_dialog import UpdateDialog
+
+        self.updater = UpdateDialog(self)
+        self.updater.available.connect(lambda _version: self.update_notice.show())
+        self.check_updates = QCheckBox("Check for updates automatically")
+        self.check_updates.setChecked(self.preferences.get("check_updates", True))
+        self.check_updates.toggled.connect(
+            lambda enabled: self.engine.submit(
+                self.engine.update_preferences("check_updates", enabled)
             )
         )
+        layout.addWidget(self.check_updates)
+        layout.addWidget(button("Updates…", self._open_updates))
         close = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         close.rejected.connect(self.settings.hide)
         layout.addWidget(close)
+
+    def _open_updates(self):
+        self.updater.show()
+        if not self.updater.release:
+            self.updater.check()
 
     def _build_logs(self):
         self.logs = QDialog(self)
@@ -595,12 +620,13 @@ class Window(QMainWindow):
             self.server.setChecked(server)
             self.client.setChecked(not server)
         self.role_caption.setText(
-            "SERVER · Windows PC receiving the controller"
+            "SERVER · Computer receiving the controller"
             if server
             else "CLIENT · Computer connected to your DualSense"
         )
         self.audio_box.setVisible(not server)
         self.auto.setVisible(not server)
+        self.mouse.setVisible(server)
         self.repair_button.setVisible(server and sys.platform == "win32")
         self.setup_note.setVisible(server and sys.platform == "win32")
         self.peer_label.setText("PAIRED CLIENT" if server else "PAIRED SERVER")
@@ -707,6 +733,12 @@ class Window(QMainWindow):
         if was_locked and not locked:
             self.audio_status.hide()
         mode_locked = active or self.busy
+        self.mouse.setEnabled(not mode_locked)
+        self.mouse.setToolTip(
+            "Disconnect to change touchpad mouse control"
+            if mode_locked
+            else "One finger moves; tap or click selects; two fingers scroll."
+        )
         self.mode_button.setEnabled(not mode_locked)
         self.mode_button.setToolTip(
             "Disconnect to change mode"
@@ -730,7 +762,7 @@ class Window(QMainWindow):
         self._perform(self.engine.set_audio(enabled))
 
     def _role_changed(self, role):
-        if sys.platform != "win32" or self.engine.receiver or self.engine.connection or self.busy:
+        if sys.platform == "darwin" or self.engine.receiver or self.engine.connection or self.busy:
             return
         if role == self.current_role:
             self._back()
@@ -1056,9 +1088,7 @@ class Window(QMainWindow):
             text in message
             for text in ("route", "Connect call failed", "refused", "10060", "timed out")
         ):
-            return (
-                "Server unreachable. Check its address, VPN and Windows firewall, then try again."
-            )
+            return "Server unreachable. Check its address, VPN and server firewall, then try again."
         if "10048" in message or "Address already in use" in message:
             return "Another TripleSense copy is using the connection. Quit it and try again."
         return message if len(message) <= 160 else "Connection failed. Open Logs for details."
@@ -1253,6 +1283,11 @@ class Window(QMainWindow):
                 return
             try:
                 future.result()
+                if self.pending_update:
+                    from .updates import launch_installer
+
+                    package, mac_stage = self.pending_update
+                    launch_installer(package, self.root, mac_stage=mac_stage)
             except Exception as exc:
                 self.closing = False
                 self.busy = False

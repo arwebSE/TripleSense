@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-14]
+        os: [windows-latest, macos-14, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +19,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -e ".[controller,app,build]"
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libudev-dev libxcb-cursor0
       - if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/Install-HostDriver.ps1
@@ -29,6 +31,8 @@ jobs:
           python tools/build_app.py --installer
       - if: runner.os == 'macOS'
         run: python tools/build_app.py
+      - if: runner.os == 'Linux'
+        run: python tools/build_app.py
       - uses: actions/upload-artifact@v4
         with:
           name: TripleSense-${{ runner.os }}-${{ runner.arch }}
@@ -36,4 +40,5 @@ jobs:
             dist/TripleSense-Setup-*.exe
             dist/TripleSense-macOS.zip
             dist/TripleSense-macOS.dmg
+            dist/TripleSense-*-Linux-*.deb
           if-no-files-found: error
