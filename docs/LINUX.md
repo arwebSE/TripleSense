@@ -1,6 +1,6 @@
 # Linux preview
 
-This describes the unreleased 0.5.0 development build. The current 0.4.16
+This describes the unreleased 0.5.x development work. The current 0.4.16
 download does not include Linux support.
 
 ## Installation and use
@@ -37,7 +37,7 @@ input continues to the game. Windows Servers have the same setting.
 
 ## What still needs testing
 
-The ARM64 package has passed frozen-app launch, icon and codec checks on
+The 0.5.0 ARM64 package passed frozen-app launch, icon and codec checks on
 Debian 12. Synthetic controller input and virtual-mouse output have passed
 real Linux kernel tests. The available test VM has no USB audio drivers, so
 Linux speaker/microphone enumeration and playback/capture still require a

@@ -1,9 +1,12 @@
 # Linux and macOS expansion
 
-Development version: 0.5.0, not a published release.
+Development version: 0.5.1, not a published release.
 
-Implementation branch: `codex/platforms-and-touchpad`. The installed 0.4.16
-release is not replaced during this work.
+Implementation branch: `codex/platforms-and-touchpad`. At the user's request,
+the Windows app was updated to development 0.5.1 for live mouse/update testing.
+The Mac 0.4.16 app has not yet been replaced: it became unreachable before
+the 0.5.1 build could be transferred. A one-time installation job is retrying
+the previously authorized SSH hosts for up to 24 hours.
 
 ## Reuse decisions
 
@@ -82,4 +85,27 @@ throughput, latency or perceptual quality.
   normal Linux system. No physical Linux controller acceptance is claimed.
 - GitHub hosted jobs did not start: account billing/spending-limit rejection.
 - Only test-owned fixtures were stopped; the existing Docker workload and
-  installed 0.4.16 apps were left in place.
+  existing private settings and saved pairings were preserved.
+
+## 0.5.1 updates and live mouse investigation
+
+- Windows: 102 app tests passed, one skipped. Frozen installer launch/icon/codec
+  checks passed. The update helper installed 0.5.1 and reopened the app; the
+  installed executable matched the tested build's SHA-256. Settings retained
+  Server mode, the saved Client and enabled mouse control.
+- GitHub: a real private 0.4.16 release installer was downloaded and its size
+  and SHA-256 verified using an existing local test credential held in memory.
+  Anonymous access produced the expected private-repository error. No credential
+  is embedded or copied into the app. Newer development builds are not downgraded.
+- Mac: staging of the actual 0.4.16 DMG passed bundle ID, version and code
+  signature verification without replacing the installed bundle. New Mac 0.5.1
+  build/install and full restart validation remain pending network access.
+- Mouse: native Windows pointer injection worked, and full endpoint addresses
+  such as 0x84 are now covered by a paired TLS regression test. The live Windows
+  trace actually used endpoint 4 and received empty interrupt-IN responses from
+  the Mac. The user still reported no cursor movement after that endpoint fix.
+  A direct native-backend probe connected but reported zero Bluetooth input;
+  this is unresolved and must not be described as a working hardware mouse test.
+- A local, same-user diagnostics IPC command reports version, attachment,
+  mouse mode, backend counters and worker liveness. It includes no raw input or
+  audio buffers. Temporary Python firewall access used for tracing was removed.
