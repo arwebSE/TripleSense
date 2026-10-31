@@ -21,6 +21,7 @@ def package_linux():
     shutil.copytree(ROOT / "dist/TripleSense", app, symlinks=True)
     helper = app / "triplesense-vhci"
     shutil.copy2(ROOT / "packaging/linux/triplesense-vhci", helper)
+    helper.write_bytes(helper.read_bytes().replace(b"\r\n", b"\n"))
     helper.chmod(0o755)
 
     def write(path, content, mode=0o644):

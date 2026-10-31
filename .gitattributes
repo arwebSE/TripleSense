@@ -1,0 +1,2 @@
+*.sh text eol=lf
+packaging/linux/triplesense-vhci text eol=lf

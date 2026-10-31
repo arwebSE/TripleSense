@@ -248,7 +248,7 @@ def launch_installer(package, root, *, mac_stage=None):
         )
     else:
         script = Path(root) / "update-unix.sh"
-        script.write_bytes((assets / "update-unix.sh").read_bytes())
+        script.write_bytes((assets / "update-unix.sh").read_bytes().replace(b"\r\n", b"\n"))
         staged, target = mac_stage if mac_stage else (package, sys.executable)
         with log.open("ab") as output:
             subprocess.Popen(
