@@ -1,78 +1,156 @@
-# TripleSense
+<p align="center">
+  <img src="src/dualsensedriver/assets/dsshine.png" width="88" alt="TripleSense icon">
+</p>
 
-Previously named DSShine. Updates keep your settings and saved pairings.
+<h1 align="center">TripleSense</h1>
 
-Use your DualSense with a gaming computer even when the controller is connected
-to a different computer.
-TripleSense sends the controller connection between the two computers, including
-adaptive triggers, vibration and touchpad input.
+<p align="center"><strong>Your DualSense here. Your games over there.</strong></p>
 
-Use it alongside your preferred game-streaming app. Sunshine and Moonlight
-are our tested setup, but are not required by TripleSense.
+<p align="center">
+  <a href="https://github.com/arwebSE/TripleSense/releases/latest">Download</a> ·
+  <a href="#get-connected">Get started</a> ·
+  <a href="#supported-platforms">Compatibility</a> ·
+  <a href="docs/STANDALONE.md">Help</a>
+</p>
 
-**[Download TripleSense](https://github.com/arwebSE/TripleSense/releases)** ·
-[Setup and troubleshooting](docs/STANDALONE.md)
+TripleSense connects a DualSense beside you to games running on another computer.
+It forwards controller input and feedback, including adaptive triggers, vibration,
+motion and touchpad reports, with a Bluetooth speaker and microphone path.
+Individual games still decide which DualSense features they use.
 
-> **Preview release:** controller input and adaptive triggers have been tested.
-> Bluetooth speaker and microphone have passed Mac-to-Windows signal tests with
-> the new native Mac transport. Detailed audio haptics and broader hardware/OS
-> compatibility still need testing. Other streaming apps have not yet been tested.
+Use it alongside your preferred game-streaming software, or on its own.
+Sunshine and Moonlight are our tested streaming setup; neither is required.
+TripleSense carries the controller connection. Your streaming app carries the
+picture and normal game sound.
 
-## What you need
+> **Preview software.** Mac-to-Windows input, vibration and adaptive triggers
+> have been tested with a real controller. Bluetooth speaker and microphone
+> signal tests have passed, but sustained audio, detailed haptics and broader
+> game compatibility still need validation. See [current limitations](#current-limitations).
 
-- A Windows gaming PC (64-bit).
-- A controller computer running Windows or macOS, with a Bluetooth DualSense.
-- Both computers on the same local network, or connected through your own
-  private VPN such as Tailscale or NetBird.
+## Download
 
-The gaming computer runs **Server**; the computer beside your controller runs
-**Client**. A Mac is optional. The current Mac download is for Apple Silicon.
-Windows and macOS clients are implemented; Mac-to-Windows is the setup tested
-with a real controller so far. macOS Server support is planned.
+| Computer | Download | What to install |
+| --- | --- | --- |
+| Windows, 64-bit Intel/AMD | [Windows installer](https://github.com/arwebSE/TripleSense/releases/latest) | Run `TripleSense-Setup-…-Windows-x64.exe`. |
+| macOS, Apple Silicon | [Mac disk image](https://github.com/arwebSE/TripleSense/releases/latest/download/TripleSense-macOS.dmg) | Open the DMG and drag TripleSense into Applications. |
 
-You do **not** need Python, SSH, a terminal or developer tools. Everything needed
-by the apps is included; Windows asks for administrator permission to install
-the controller driver. macOS and Linux gaming-PC support is planned.
+**No Python, terminal commands or developer tools are needed.** The apps include
+their runtime libraries. Windows setup includes the free signed USB/IP driver
+and asks for administrator permission.
+
+The repository is currently private: downloads require a GitHub account with
+access. The Mac preview is not notarized, so macOS may require
+[Open Anyway](https://support.apple.com/en-gb/102445) on first launch.
 
 ## Get connected
 
-1. **On Windows:** download and run the Windows installer, then open TripleSense
-   in **Server** mode.
-2. **On the controller computer:** install TripleSense and use **Client** mode.
-   On macOS, drag the app from the disk image into Applications; it opens as
-   Client automatically. Allow Bluetooth/local-network access when asked.
-3. **On Windows:** Server shows a four-digit pairing code automatically.
-4. **On the Client:** enter the Server address and code, then click **Connect**.
-   The Client automatically finds servers on LAN and Tailscale/NetBird every five
-   seconds while adding a server. You can also enter the address manually.
-5. Turn on your DualSense and start your game or stream.
+You need two computers, a DualSense connected over **Bluetooth**, and either the
+same local network or a private VPN such as **Tailscale** or **NetBird**.
 
-Pairing is saved, so you only need the code once. Newly requested codes copy automatically;
-**Copy code** copies the displayed code again. Click any Server IP address to
-copy that address.
-While waiting, the Server renews expired codes automatically without changing
-your clipboard or your existing pairing.
-The Client keeps a saved-server list with online/offline indicators. Use
-**Add server** to pair another computer, or **Remove** to forget an old one.
+```text
+DualSense ── Bluetooth ── Client computer ── LAN / VPN ── Server computer
+                          beside you                     running the game
+```
 
-If your streaming app also forwards controllers, disable that feature if it
-causes duplicate input. TripleSense does not change your streaming app's settings.
+1. **Open TripleSense on the gaming PC.** Choose **Server** on Windows and
+   start it. A four-digit pairing code appears automatically.
+2. **Open TripleSense beside the controller.** Choose **Client** on Windows;
+   the Mac app opens as Client automatically. Allow Bluetooth and local-network
+   access when prompted, then turn on the controller.
+3. **Add the Server on the Client.** Select it from the discovered servers, or
+   enter its address. Enter the four-digit code and click **Connect**. You can
+   click an address in the Server app to copy it.
+4. **Start your game or stream.** If your streaming software also forwards
+   controllers, disable its controller forwarding to avoid duplicate input.
 
-## Everyday use
+Pairing is saved. Next time, open both apps and turn on the controller; select
+the saved Server and click **Connect** if needed. You do not need another code.
+The Client shows online/offline status for saved servers and lets you add or
+remove them.
 
-Open TripleSense on both computers and turn on your controller. It reconnects
-automatically. Minimize the window to keep playing; closing it disconnects the
-controller and quits the app.
+Keep both apps open while playing. **Minimize** to leave the connection running;
+closing a window disconnects the controller and quits that app.
 
-Controller audio is enabled by default. If it causes dropouts, disconnect,
-uncheck **Controller audio**, then connect again. Ordinary game sound through
-your streaming app is separate.
+### Connecting over Tailscale or NetBird
 
-If macOS blocks the downloaded preview, see
-[Apple's instructions for opening it](https://support.apple.com/en-gb/102445).
-For connection problems, see [setup and troubleshooting](docs/STANDALONE.md).
+Connect both computers to the same private VPN, then use the Server's VPN
+address. Discovery checks LAN and known VPN peers automatically while adding
+a Server. If it does not appear, enter the VPN address manually.
 
----
+Your VPN access rules must allow the computers to communicate. The Windows
+installer permits local subnets and the `100.64.0.0/10` range used by Tailscale
+and default NetBird networks. Custom VPN ranges need a matching firewall rule.
+Tailscale controller input and trigger feedback have passed live testing;
+NetBird still needs a full live controller test.
 
-For contributors: [development guide](docs/DEVELOPMENT.md) ·
-[credits and upstream project](docs/UPSTREAM.md) · [platform and feature plan](docs/PRODUCT.md)
+## Supported platforms
+
+**Client** is the computer connected to the physical controller.
+**Server** is the computer running the game. A Mac is optional.
+
+| Platform | Client | Server |
+| --- | --- | --- |
+| Windows x64 | Available; physical-controller testing pending | Available; tested with a Mac Client |
+| macOS, Apple Silicon | Available; tested with a Windows Server | Planned |
+| Linux | Development preview | Development preview |
+
+The latest published release is **0.4.16**. Linux packaging, touchpad mouse mode
+and in-app updates are in **0.5.1 development builds**, not that published release.
+Linux has passed isolated kernel input tests; physical Bluetooth and audio
+testing are still pending. See the [Linux preview](https://github.com/arwebSE/TripleSense/blob/codex/platforms-and-touchpad/docs/LINUX.md) for details.
+
+## Controller audio
+
+**Controller audio is enabled by default.** It carries the controller's speaker,
+microphone and audio-driven haptics separately from your stream's normal sound.
+Your game or operating system may need to select the virtual controller's audio
+device for speaker or microphone use.
+
+To change the option, disconnect first, toggle **Controller audio**, then
+reconnect. Turning it off stops microphone capture and Bluetooth audio packets
+while keeping ordinary controller input and feedback available.
+
+## Current limitations
+
+- **Bluetooth controllers only:** forwarding a controller connected by USB is
+  planned.
+- **Audio needs more testing:** successful speaker/microphone signal tests do
+  not yet establish reliable full-duplex audio or detailed haptics in every game.
+- **Touchpad as a mouse is experimental:** it is absent from the published
+  release, and the current live Mac-to-Windows mouse test remains unresolved.
+- **macOS Server is not available yet.** Linux Client and Server remain previews.
+- **Other streaming apps need testing.** TripleSense works independently of the
+  streaming app, but Sunshine/Moonlight is the combination validated so far.
+
+## Need help?
+
+| Problem | Try this |
+| --- | --- |
+| Server does not appear | Enter its LAN or VPN address manually. Check local-network permissions and VPN access rules. |
+| Windows refuses the connection | Use **Settings → Repair Windows setup** to repair the driver and firewall rules. |
+| Controller is asleep | Press **PS** to reconnect it. |
+| Input or effects are missing | Close Steam on the Client computer and check for duplicate controller forwarding in your streaming app. |
+| Audio drops out | Disconnect and turn off **Controller audio** to check input separately. Audio remains preview functionality. |
+
+Open **Logs** in the app for connection details. More help is in the
+[setup and troubleshooting guide](docs/STANDALONE.md).
+
+To update the published release, quit TripleSense and run the newer Windows
+installer or replace the Mac app. Settings and pairings are kept. Development
+0.5.1 adds **Settings → Updates** for downloading, installing and restarting
+inside the app; see [updates](https://github.com/arwebSE/TripleSense/blob/codex/platforms-and-touchpad/docs/UPDATES.md).
+
+## Open source
+
+TripleSense is MIT-licensed and builds on
+[Macle57's ds5-virtual-cable](https://github.com/Macle57/ds5-virtual-cable) and
+usbip-win2. Its focus is a standalone, paired controller connection between
+computers, with discovery, saved servers and desktop apps. See
+[upstream credits and comparison](docs/UPSTREAM.md) and
+[third-party notices](THIRD_PARTY_NOTICES.md).
+
+Previously called **DSShine**. Renaming or updating keeps existing pairings.
+
+Want to contribute? Start with the [development guide](docs/DEVELOPMENT.md),
+[platform roadmap](docs/PRODUCT.md) and [test results](https://github.com/arwebSE/TripleSense/blob/codex/platforms-and-touchpad/docs/PLATFORM_WORK.md).
