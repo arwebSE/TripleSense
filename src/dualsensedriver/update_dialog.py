@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QProgressBar,
     QPushButton,
     QVBoxLayout,
@@ -87,18 +86,9 @@ class UpdateDialog(QDialog):
 
     def _action(self):
         if self.package:
-            if (
-                QMessageBox.question(
-                    self,
-                    "Install update?",
-                    "TripleSense will disconnect the controller, install the update and reopen. "
-                    "Your settings and saved pairings will be kept.",
-                )
-                == QMessageBox.StandardButton.Yes
-            ):
-                self.window.pending_update = (self.package, self.mac_stage)
-                self.hide()
-                self.window.quit()
+            self.window.pending_update = (self.package, self.mac_stage)
+            self.hide()
+            self.window.quit()
         elif self.release:
             self.status.setText(f"Downloading TripleSense {self.release.version}…")
             self.bar.setValue(0)
@@ -146,7 +136,10 @@ class UpdateDialog(QDialog):
         elif operation == "download":
             self.package, self.mac_stage = result
             self.bar.hide()
-            self.status.setText(f"TripleSense {self.release.version} is downloaded and verified.")
+            self.status.setText(
+                f"TripleSense {self.release.version} is ready. "
+                "Installing disconnects your controller and restarts the app."
+            )
             self.action.setText("Install and restart")
             self.action.setEnabled(bool(getattr(sys, "frozen", False)))
             if not getattr(sys, "frozen", False):

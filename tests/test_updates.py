@@ -1,5 +1,6 @@
 import hashlib
 import io
+import plistlib
 import tempfile
 import unittest
 import urllib.request
@@ -98,3 +99,42 @@ class UpdateTests(unittest.TestCase):
     def test_source_checkout_cannot_launch_installer(self):
         with patch.object(U.sys, "frozen", False, create=True), self.assertRaises(U.UpdateError):
             U.launch_installer(Path("installer.exe"), Path("."))
+
+    def test_invalid_token_is_rejected_without_disclosing_its_value(self):
+        token = "private-token\nInjectedHeader"
+        with self.assertRaises(U.UpdateError) as raised:
+            U.open_github(U.API + "/releases/latest", token)
+        self.assertNotIn(token, str(raised.exception))
+
+    def test_macos_wrong_bundle_is_rejected_and_disk_image_is_detached(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "installed/TripleSense.app"
+            executable = target / "Contents/MacOS/TripleSense"
+            executable.parent.mkdir(parents=True)
+            executable.touch()
+            (target / "Contents/Info.plist").write_bytes(plistlib.dumps({}))
+            stage = root / "stage"
+            stage.mkdir()
+
+            def run(command, **kwargs):
+                if "attach" in command:
+                    info = stage / "mount/TripleSense.app/Contents/Info.plist"
+                    info.parent.mkdir(parents=True)
+                    info.write_bytes(
+                        plistlib.dumps(
+                            {
+                                "CFBundleIdentifier": "unexpected.app",
+                                "CFBundleShortVersionString": "1.2.3",
+                            }
+                        )
+                    )
+
+            with (
+                patch.object(U.tempfile, "mkdtemp", return_value=str(stage)),
+                patch.object(U.subprocess, "run", side_effect=run) as calls,
+                self.assertRaisesRegex(U.UpdateError, "identity"),
+            ):
+                U.stage_macos(root / "update.dmg", "1.2.3", executable)
+            self.assertIn("detach", calls.call_args_list[-1].args[0])
+            self.assertTrue(executable.is_file())
