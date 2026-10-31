@@ -33,6 +33,7 @@ picture and normal game sound.
 | Computer | Download | What to install |
 | --- | --- | --- |
 | Windows, 64-bit Intel/AMD | [Windows installer](https://github.com/arwebSE/TripleSense/releases/latest) | Run `TripleSense-Setup-…-Windows-x64.exe`. |
+| Linux, ARM64 (experimental) | [Debian/Ubuntu package](https://github.com/arwebSE/TripleSense/releases/latest) | Install the `.deb` with your package manager. |
 | macOS, Apple Silicon | [Mac disk image](https://github.com/arwebSE/TripleSense/releases/latest/download/TripleSense-macOS.dmg) | Open the DMG and drag TripleSense into Applications. |
 
 **No Python, terminal commands or developer tools are needed.** The apps include
@@ -95,8 +96,8 @@ NetBird still needs a full live controller test.
 | macOS, Apple Silicon | Available; tested with a Windows Server | Planned |
 | Linux | Development preview | Development preview |
 
-The latest published release is **0.4.16**. Linux packaging, touchpad mouse mode
-and in-app updates are in **0.5.1 development builds**, not that published release.
+Release **0.5.1** includes experimental Linux packaging, touchpad mouse mode
+and in-app updates. The Linux download currently targets ARM64 Debian/Ubuntu.
 Linux has passed isolated kernel input tests; physical Bluetooth and audio
 testing are still pending. See the [Linux preview](docs/LINUX.md) for details.
 
@@ -117,8 +118,8 @@ while keeping ordinary controller input and feedback available.
   planned.
 - **Audio needs more testing:** successful speaker/microphone signal tests do
   not yet establish reliable full-duplex audio or detailed haptics in every game.
-- **Touchpad as a mouse is experimental:** it is absent from the published
-  release, and the current live Mac-to-Windows mouse test remains unresolved.
+- **Touchpad as a mouse is experimental:** the current live Mac-to-Windows
+  mouse test remains unresolved.
 - **macOS Server is not available yet.** Linux Client and Server remain previews.
 - **Other streaming apps need testing.** TripleSense works independently of the
   streaming app, but Sunshine/Moonlight is the combination validated so far.
@@ -136,10 +137,9 @@ while keeping ordinary controller input and feedback available.
 Open **Logs** in the app for connection details. More help is in the
 [setup and troubleshooting guide](docs/STANDALONE.md).
 
-To update the published release, quit TripleSense and run the newer Windows
-installer or replace the Mac app. Settings and pairings are kept. Development
-0.5.1 adds **Settings → Updates** for downloading, installing and restarting
-inside the app; see [updates](docs/UPDATES.md).
+Use **Settings → Updates** to download an update and choose **Install and restart**.
+Settings and pairings are kept. Versions before 0.5.1 need one manual update
+using the Windows installer or replacement Mac app. See [updates](docs/UPDATES.md).
 
 ## Open source
 

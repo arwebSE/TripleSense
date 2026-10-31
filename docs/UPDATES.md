@@ -1,6 +1,6 @@
 # App updates
 
-The unreleased 0.5.1 development build adds updates to both Client and Server.
+Version 0.5.1 adds updates to both Client and Server.
 Earlier installed versions need one manual update to gain this feature.
 
 TripleSense checks the latest stable GitHub release on startup by default.
