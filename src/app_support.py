@@ -180,7 +180,7 @@ class Discovery:
 
 
 def bundled_installer():
-    root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
+    root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1]))
     path = root / "installers" / "USBip-0.9.8.1-x64.exe"
     if not path.is_file():
         return None

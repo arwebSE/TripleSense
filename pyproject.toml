@@ -40,7 +40,7 @@ packages = ["dualsensedriver", "ds5emu", "ds5bridge"]
 dualsensedriver = ["assets/*"]
 
 [tool.setuptools.package-dir]
-dualsensedriver = "src/dualsensedriver"
+dualsensedriver = "src"
 ds5emu = "vendor/ds5-virtual-cable/emulator/ds5emu"
 ds5bridge = "vendor/ds5-virtual-cable/prototype/ds5bridge"
 

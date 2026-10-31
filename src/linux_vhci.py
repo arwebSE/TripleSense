@@ -12,7 +12,7 @@ from pathlib import Path
 def helper_path():
     if getattr(sys, "frozen", False):
         return Path(sys.executable).with_name("triplesense-vhci")
-    return Path(__file__).resolve().parents[2] / "packaging/linux/triplesense-vhci"
+    return Path(__file__).resolve().parents[1] / "packaging/linux/triplesense-vhci"
 
 
 class LinuxAttachment:

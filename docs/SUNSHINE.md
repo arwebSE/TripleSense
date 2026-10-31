@@ -9,10 +9,21 @@ blocks until USB/IP reports attachment; failures return a nonzero exit code.
 
 ## Configure
 
-1. Copy `examples/sunshine-session.json` to a private local configuration, e.g.
-   `.credentials/sunshine-session.json`. Set the controller PC's address and
-   absolute host-credentials / `usbip.exe` paths. Relative paths resolve against
-   the config file's directory.
+1. Create a private `.credentials/sunshine-session.json` file with the controller
+   PC's address and absolute host-credentials / `usbip.exe` paths:
+
+   ```json
+   {
+     "source": "192.168.1.50",
+     "port": 3250,
+     "local_port": 3247,
+     "credentials": "C:/path/to/host-credentials",
+     "usbip": "C:/Program Files/USBip/usbip.exe"
+   }
+   ```
+
+   Relative paths resolve against the config file's directory. This optional
+   developer integration is separate from the desktop app's normal pairing flow.
 2. Generate an entry for review:
 
    ```powershell

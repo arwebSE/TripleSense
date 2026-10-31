@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/dualsensedriver/assets/dsshine.png" width="88" alt="TripleSense icon">
+  <img src="src/assets/dsshine.png" width="88" alt="TripleSense icon">
 </p>
 
 <h1 align="center">TripleSense</h1>

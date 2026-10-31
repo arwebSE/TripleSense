@@ -91,6 +91,15 @@ def main():
     if sys.platform not in ("win32", "darwin", "linux"):
         parser.error("Build on Windows, macOS or Linux")
     license_dir = notices()
+    # PyInstaller needs a physical package directory; setuptools maps our flat
+    # src directory to the existing import name for normal/editable installs.
+    package_root = ROOT / "build" / "python"
+    package = package_root / "dualsensedriver"
+    if package.exists():
+        shutil.rmtree(package)
+    shutil.copytree(
+        ROOT / "src", package, ignore=shutil.ignore_patterns("__pycache__", "*.egg-info")
+    )
     command = [
         sys.executable,
         "-m",
@@ -100,13 +109,9 @@ def main():
         "--windowed",
         "--onedir",
         "--icon",
-        str(
-            ROOT
-            / "src/dualsensedriver/assets"
-            / ("dsshine.icns" if sys.platform == "darwin" else "dsshine.ico")
-        ),
+        str(ROOT / "src/assets" / ("dsshine.icns" if sys.platform == "darwin" else "dsshine.ico")),
         "--add-data",
-        str(ROOT / "src/dualsensedriver/assets") + ":dualsensedriver/assets",
+        str(ROOT / "src/assets") + ":dualsensedriver/assets",
         "--name",
         "TripleSense",
         "--distpath",
@@ -116,7 +121,7 @@ def main():
         "--specpath",
         str(ROOT / "build"),
         "--paths",
-        str(ROOT / "src"),
+        str(package_root),
         "--paths",
         str(ROOT / "vendor" / "ds5-virtual-cable" / "emulator"),
         "--paths",
@@ -196,7 +201,7 @@ def main():
                 "CoreBluetooth",
                 "-framework",
                 "IOBluetooth",
-                str(ROOT / "src/dualsensedriver/native/macos_bluetooth.m"),
+                str(ROOT / "src/native/macos_bluetooth.m"),
                 "-o",
                 str(native_helper),
             ],

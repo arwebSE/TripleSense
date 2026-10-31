@@ -1,6 +1,6 @@
 # Third-party code
 
-`src/dualsensedriver/touchpad_mouse.py` adapts contact tracking and gesture logic
+`src/touchpad_mouse.py` adapts contact tracking and gesture logic
 from MIT-licensed `app/ds5app/intercept.py` in Macle57/ds5-virtual-cable at
 `c99dd9c519bebd508ff814fa7aedced0c0c443b6`. The upstream MIT license and copyright
 notices are retained in `vendor/ds5-virtual-cable/LICENSE` and `NOTICE`.

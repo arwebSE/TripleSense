@@ -10,7 +10,7 @@ from PySide6.QtSvg import QSvgRenderer
 
 def main():
     app = QGuiApplication.instance() or QGuiApplication([])
-    root = Path(__file__).resolve().parents[1] / "src/dualsensedriver/assets"
+    root = Path(__file__).resolve().parents[1] / "src/assets"
     renderer = QSvgRenderer(str(root / "dsshine.svg"))
     images = {}
     for size in (16, 24, 32, 48, 64, 128, 256, 512, 1024):

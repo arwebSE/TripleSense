@@ -60,7 +60,7 @@ Categories=Game;Utility;
     )
     icon = staging / "usr/share/icons/hicolor/512x512/apps/triplesense.png"
     icon.parent.mkdir(parents=True)
-    shutil.copy2(ROOT / "src/dualsensedriver/assets/dsshine.png", icon)
+    shutil.copy2(ROOT / "src/assets/dsshine.png", icon)
     write(
         "usr/lib/udev/rules.d/70-triplesense.rules",
         """# Access only for the active local desktop seat.
