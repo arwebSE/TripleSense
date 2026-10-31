@@ -88,7 +88,9 @@ class TouchpadMouse:
         return bytes(masked)
 
     def close(self):
-        if self.held is not None:
-            self.output.button(self.held, False)
-            self.held = None
-        self.output.close()
+        try:
+            if self.held is not None:
+                name, self.held = self.held, None
+                self.output.button(name, False)
+        finally:
+            self.output.close()
