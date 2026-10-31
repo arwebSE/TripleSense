@@ -12,6 +12,7 @@ import stat
 import sys
 import tempfile
 import time
+from contextlib import closing
 from pathlib import Path
 
 from evdev import InputDevice
@@ -41,7 +42,7 @@ def main():
         with tempfile.TemporaryDirectory(prefix="triplesense-mouse-") as temporary:
             private = Path(temporary) / "events"
             os.mknod(private, stat.S_IFCHR | 0o600, os.makedev(major, minor))
-            with InputDevice(str(private)) as reader:
+            with closing(InputDevice(str(private))) as reader:
                 output.move(17, -9)
                 output.button("left", True)
                 output.button("left", False)

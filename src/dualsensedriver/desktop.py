@@ -1072,9 +1072,7 @@ class Window(QMainWindow):
             text in message
             for text in ("route", "Connect call failed", "refused", "10060", "timed out")
         ):
-            return (
-                "Server unreachable. Check its address, VPN and Windows firewall, then try again."
-            )
+            return "Server unreachable. Check its address, VPN and server firewall, then try again."
         if "10048" in message or "Address already in use" in message:
             return "Another TripleSense copy is using the connection. Quit it and try again."
         return message if len(message) <= 160 else "Connection failed. Open Logs for details."

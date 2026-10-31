@@ -134,7 +134,7 @@ class AppPairingTests(unittest.IsolatedAsyncioTestCase):
             "dualsensedriver.pairing.asyncio.open_connection", new_callable=AsyncMock
         ) as dial:
             dial.side_effect = TimeoutError()
-            with self.assertRaisesRegex(TimeoutError, "VPN connection and Windows firewall"):
+            with self.assertRaisesRegex(TimeoutError, "VPN connection and server firewall"):
                 await pair_controller("100.97.43.25", self.offer.code, self.root / "client")
         self.assertFalse((self.root / "client").exists())
 

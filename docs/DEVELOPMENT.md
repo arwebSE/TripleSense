@@ -7,6 +7,10 @@ This guide is for contributors. For installation and everyday use, start with
 [Platform roadmap](ROADMAP.md) · [Validation evidence](VALIDATION.md) ·
 [Third-party notices](../THIRD_PARTY_NOTICES.md)
 
+Development 0.5.0 adds Linux packaging/Server and touchpad mouse output.
+See [Linux preview setup](LINUX.md) and [platform validation and macOS Server
+prerequisites](PLATFORM_WORK.md). These changes are separate from release 0.4.16.
+
 A streaming-independent Windows DualSense device bridge, targeting native
 controller input, adaptive triggers, and the audio path used for detailed haptics.
 
@@ -25,8 +29,9 @@ physical adaptive-trigger mode readback, microphone capture, acoustic speaker
 output, four-channel PCM transport and Sunshine start/stop commands have passed.
 Mac-to-Windows input, native USB enumeration, trigger readback and microphone
 signal have also passed. The user confirmed inputs, vibration and adaptive
-triggers in the Windows browser tester. Mac Bluetooth audio currently drops
-frames and has not passed repeatable speaker checks. Audio tests require Steam isolation on
+triggers in the Windows browser tester. The older Mac HID transport dropped
+Bluetooth audio frames; the native Mac transport has since passed
+live speaker and microphone signal tests. Audio tests require Steam isolation on
 the source PC. Game compatibility and subjective haptic quality remain unverified.
 See [validation](VALIDATION.md) for current evidence.
 

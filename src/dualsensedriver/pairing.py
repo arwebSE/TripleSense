@@ -174,7 +174,7 @@ async def pair_controller(address, code, root, *, port=PAIR_PORT):
         reader, writer = await asyncio.wait_for(asyncio.open_connection(address, port), 5)
     except TimeoutError as exc:
         raise TimeoutError(
-            "Server connection timed out. Check the address, VPN connection and Windows firewall."
+            "Server connection timed out. Check the address, VPN connection and server firewall."
         ) from exc
     try:
         await send_frame(writer, message_a)
