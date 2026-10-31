@@ -7,9 +7,9 @@ This guide is for contributors. For installation and everyday use, start with
 [Platform roadmap](ROADMAP.md) · [Validation evidence](VALIDATION.md) ·
 [Third-party notices](../THIRD_PARTY_NOTICES.md)
 
-Development 0.5.0 adds Linux packaging/Server and touchpad mouse output.
+Version 0.5.1 includes experimental Linux packaging/Server and touchpad mouse output.
 See [Linux preview setup](LINUX.md) and [platform validation and macOS Server
-prerequisites](PLATFORM_WORK.md). These changes are separate from release 0.4.16.
+prerequisites](PLATFORM_WORK.md). These features are included in release 0.5.1 with the documented validation limits.
 
 A streaming-independent Windows DualSense device bridge, targeting native
 controller input, adaptive triggers, and the audio path used for detailed haptics.

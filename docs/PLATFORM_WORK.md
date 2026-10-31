@@ -1,6 +1,7 @@
 # Linux and macOS expansion
 
-Development version: 0.5.1, not a published release.
+Version 0.5.1 ships the Linux and touchpad work as experimental features.
+The validation boundaries below still apply.
 
 Implementation branch: `codex/platforms-and-touchpad`. At the user's request,
 the Windows app was updated to development 0.5.1 for live mouse/update testing.

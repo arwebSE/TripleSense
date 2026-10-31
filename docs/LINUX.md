@@ -1,7 +1,8 @@
 # Linux preview
 
-This describes the unreleased 0.5.x development work. The current 0.4.16
-download does not include Linux support.
+Version 0.5.1 includes an experimental ARM64 Debian/Ubuntu package.
+Linux Client and Server still need physical-controller and audio acceptance.
+Download it from the [release page](https://github.com/arwebSE/TripleSense/releases/latest).
 
 ## Installation and use
 

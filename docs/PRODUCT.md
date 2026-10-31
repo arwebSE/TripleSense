@@ -10,9 +10,9 @@ The target is Windows, macOS and Linux in **both** Client and Server roles,
 with physical DualSense connections over **Bluetooth and USB**. Do not label
 a combination supported until it has a working backend and hardware acceptance.
 
-Published release: Windows Server; Windows/macOS Client with Bluetooth.
+Release 0.5.1: Windows Server; Windows/macOS Client with Bluetooth, plus experimental Linux Client/Server.
 Mac-to-Windows has live hardware evidence. Windows-to-Windows still needs live
-acceptance. Development 0.5.0 adds Linux Client packaging and a Linux Server
+acceptance. Version 0.5.1 includes Linux Client packaging and a Linux Server
 backend using the existing kernel USB/IP host controller. Virtual gamepad input
 has passed a real Linux kernel test; Linux audio and physical Bluetooth still
 need hardware acceptance. Physical USB forwarding remains unimplemented.
@@ -43,7 +43,7 @@ clicks should operate it. Linux launch adapters depend on the desktop environmen
 Mouse mode should support pointer movement, clicking and gestures such as
 two-finger scrolling. Consume menu/keyboard/mouse-mode combinations before
 forwarding input to games; closing a menu restores normal controller input.
-Development 0.5.0 implements opt-in touchpad mouse output on Windows and Linux
+Version 0.5.1 includes experimental opt-in touchpad mouse output on Windows and Linux
 Servers: pointer movement, tap/click, dragging, right click and two-finger
 scrolling. Menu/keyboard shortcuts and macOS pointer output remain planned.
 
