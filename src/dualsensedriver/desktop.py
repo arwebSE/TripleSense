@@ -178,7 +178,7 @@ class Window(QMainWindow):
         self.current_role = self.preferences.get(
             "role", "game" if sys.platform == "win32" else "controller"
         )
-        if sys.platform != "win32":
+        if sys.platform == "darwin":
             self.current_role = "controller"
         self.setWindowTitle("TripleSense")
         self.resize(640, 410)
@@ -249,7 +249,7 @@ class Window(QMainWindow):
         title = label("TripleSense", "brand")
         header.addWidget(title, 1)
         self.mode_button = button("Change mode", self._open_modes)
-        self.mode_button.setVisible(sys.platform == "win32")
+        self.mode_button.setVisible(sys.platform != "darwin")
         header.addWidget(self.mode_button)
         outer.addLayout(header)
         self.role_caption = label("", "muted")
@@ -258,7 +258,7 @@ class Window(QMainWindow):
         self.connection_page = self._connection_page()
         self.pair_page = self._pair_page()
         self.server = self.client = None
-        self.mode_page = self._mode_page() if sys.platform == "win32" else None
+        self.mode_page = self._mode_page() if sys.platform != "darwin" else None
         self.pages.addWidget(self.connection_page)
         self.pages.addWidget(self.pair_page)
         if self.mode_page:
@@ -334,7 +334,7 @@ class Window(QMainWindow):
             label("Changing mode disconnects the current controller session.", "muted", wrap=True)
         )
         self.server = button(
-            "Server\nMakes a DualSense available on this Windows PC",
+            "Server\nMakes a DualSense available on this computer",
             lambda: self._role_changed("game"),
         )
         self.client = button(
@@ -348,8 +348,8 @@ class Window(QMainWindow):
             choice.setObjectName("mode")
             choice.setMinimumHeight(68)
             layout.addWidget(choice)
-        if sys.platform != "win32":
-            self.server.setText("Server\nRequires Windows")
+        if sys.platform == "darwin":
+            self.server.setText("Server\nRequires Apple's virtual HID entitlement")
         layout.addStretch(1)
         return page
 
@@ -556,6 +556,15 @@ class Window(QMainWindow):
             )
         )
         layout.addWidget(self.auto)
+        self.mouse = QCheckBox("Use touchpad as mouse")
+        self.mouse.setChecked(bool(self.preferences.get("touchpad_mouse", False)))
+        self.mouse.setToolTip("One finger moves; tap or click selects; two fingers scroll.")
+        self.mouse.toggled.connect(
+            lambda enabled: self.engine.submit(
+                self.engine.update_preferences("touchpad_mouse", enabled)
+            )
+        )
+        layout.addWidget(self.mouse)
         self.repair_button = button("Repair Windows setup…", self._repair_setup)
         layout.addWidget(self.repair_button)
         self.setup_note = label(
@@ -595,12 +604,13 @@ class Window(QMainWindow):
             self.server.setChecked(server)
             self.client.setChecked(not server)
         self.role_caption.setText(
-            "SERVER · Windows PC receiving the controller"
+            "SERVER · Computer receiving the controller"
             if server
             else "CLIENT · Computer connected to your DualSense"
         )
         self.audio_box.setVisible(not server)
         self.auto.setVisible(not server)
+        self.mouse.setVisible(server)
         self.repair_button.setVisible(server and sys.platform == "win32")
         self.setup_note.setVisible(server and sys.platform == "win32")
         self.peer_label.setText("PAIRED CLIENT" if server else "PAIRED SERVER")
@@ -707,6 +717,12 @@ class Window(QMainWindow):
         if was_locked and not locked:
             self.audio_status.hide()
         mode_locked = active or self.busy
+        self.mouse.setEnabled(not mode_locked)
+        self.mouse.setToolTip(
+            "Disconnect to change touchpad mouse control"
+            if mode_locked
+            else "One finger moves; tap or click selects; two fingers scroll."
+        )
         self.mode_button.setEnabled(not mode_locked)
         self.mode_button.setToolTip(
             "Disconnect to change mode"
@@ -730,7 +746,7 @@ class Window(QMainWindow):
         self._perform(self.engine.set_audio(enabled))
 
     def _role_changed(self, role):
-        if sys.platform != "win32" or self.engine.receiver or self.engine.connection or self.busy:
+        if sys.platform == "darwin" or self.engine.receiver or self.engine.connection or self.busy:
             return
         if role == self.current_role:
             self._back()

@@ -7,15 +7,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-latest, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libudev-dev libevdev-dev
       - run: python -m pip install -e ".[controller,dev,app]"
       - run: ruff check src tests tools
       - run: ruff format --check src tests tools
       - run: python -m unittest discover -s tests -t . -v
       - run: python -m unittest discover -s vendor/ds5-virtual-cable/emulator/tests -t vendor/ds5-virtual-cable/emulator
+      - if: runner.os == 'Linux'
+        name: Linux virtual USB and audio integration
+        run: |
+          sudo apt-get install -y alsa-utils
+          if ! sudo modprobe vhci_hcd; then
+            sudo apt-get install -y "linux-modules-extra-$(uname -r)"
+            sudo modprobe vhci_hcd
+          fi
+          sudo "$(which python)" tools/test_linux_vhci.py

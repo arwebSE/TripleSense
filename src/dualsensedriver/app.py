@@ -93,7 +93,9 @@ class AppEngine:
         except OSError:
             self.notify("discovery_unavailable", None)
         await self.set_role(
-            self.preferences.get("role", "game") if sys.platform == "win32" else "controller"
+            self.preferences.get("role", "game" if sys.platform == "win32" else "controller")
+            if sys.platform != "darwin"
+            else "controller"
         )
         self.probe_task = asyncio.create_task(self._watch_servers())
 
@@ -142,11 +144,20 @@ class AppEngine:
                 self.notify("client_ready", None)
 
     async def _start_game(self):
-        if sys.platform != "win32":
-            self.notify("waiting", "Choose Controller PC on this Mac")
-            return
-        usbip = find_usbip()
-        if not usbip:
+        attachment = None
+        if sys.platform.startswith("linux"):
+            from .linux_vhci import LinuxAttachment
+
+            attachment = LinuxAttachment()
+            usbip = None
+        elif sys.platform == "win32":
+            usbip = find_usbip()
+        else:
+            raise RuntimeError(
+                "macOS Server requires Apple's virtual HID entitlement. "
+                "This build can run as a Client."
+            )
+        if not usbip and attachment is None:
             self.notify("driver_needed", None)
             return
         credentials = self.preferences.get("game_credentials")
@@ -156,7 +167,12 @@ class AppEngine:
                 await self._create_pairing_offer()
             return
         receiver = GameReceiver(
-            credentials, self.notify, usbip=usbip, ownership_file=self.root / "usb-session.json"
+            credentials,
+            self.notify,
+            usbip=usbip,
+            ownership_file=self.root / "usb-session.json" if usbip else None,
+            attachment=attachment,
+            touchpad_mouse=bool(self.preferences.get("touchpad_mouse", False)),
         )
         await receiver.start()
         self.receiver = receiver
@@ -439,7 +455,16 @@ def main(argv=None):
     application.setApplicationName("TripleSense")
     application.setOrganizationName("TripleSense")
     application.setQuitOnLastWindowClosed(False)
-    application.setFont(QFont("Segoe UI" if sys.platform == "win32" else ".AppleSystemUIFont", 10))
+    application.setFont(
+        QFont(
+            "Segoe UI"
+            if sys.platform == "win32"
+            else ".AppleSystemUIFont"
+            if sys.platform == "darwin"
+            else "Sans Serif",
+            10,
+        )
+    )
     root = args.data_dir or app_directory()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     import hashlib

@@ -37,6 +37,8 @@ class GameReceiver:
         port=STREAM_PORT,
         bind="0.0.0.0",
         ownership_file=None,
+        attachment=None,
+        touchpad_mouse=False,
     ):
         self.credentials = Path(credentials)
         self.notify, self.usbip, self.port, self.bind = notify, usbip, port, bind
@@ -52,6 +54,8 @@ class GameReceiver:
         self.serial = "DS5A" + uuid.uuid4().hex[:11]
         self.last_error = None
         self.ownership_file = ownership_file
+        self.attachment = attachment
+        self.touchpad_mouse = touchpad_mouse
 
     async def start(self):
         context = tls_context(self.credentials, server=True)
@@ -79,7 +83,7 @@ class GameReceiver:
                 ssl_shutdown_timeout=1,
             )
             self.port = self.server.sockets[0].getsockname()[1]
-            if self.usbip:
+            if self.usbip or self.attachment:
                 self.worker = asyncio.create_task(self._attach_worker())
         except BaseException:
             await self.stop()
@@ -143,14 +147,24 @@ class GameReceiver:
                     target.write(data)
                     await target.drain()
 
+            if self.touchpad_mouse:
+                from .mouse_output import create_mouse
+                from .mouse_proxy import forward_responses
+                from .touchpad_mouse import TouchpadMouse
+
+                downstream = forward_responses(
+                    offer.reader, writer, lambda: TouchpadMouse(create_mouse())
+                )
+            else:
+                downstream = pump(offer.reader, writer)
             pumps = [
                 asyncio.create_task(pump(reader, offer.writer)),
-                asyncio.create_task(pump(offer.reader, writer)),
+                asyncio.create_task(downstream),
             ]
             done, _ = await asyncio.wait(pumps, return_when=asyncio.FIRST_COMPLETED)
             for item in done:
                 item.result()
-        except (OSError, TimeoutError) as exc:
+        except (OSError, ValueError, TimeoutError, asyncio.IncompleteReadError) as exc:
             self.last_error = str(exc)
         finally:
             for item in pumps:
@@ -178,9 +192,7 @@ class GameReceiver:
                     self.notify("error", str(exc))
                 finally:
                     if self.owned_port is not None:
-                        await detach_owned(
-                            self.usbip, self.owned_port, self.local_port, self.serial
-                        )
+                        await self._detach()
                         self.owned_port = None
                         if self.ownership_file:
                             self.ownership_file.unlink(missing_ok=True)
@@ -189,12 +201,17 @@ class GameReceiver:
                     await asyncio.sleep(2)
         finally:
             if self.owned_port is not None:
-                await detach_owned(self.usbip, self.owned_port, self.local_port, self.serial)
+                await self._detach()
                 self.owned_port = None
                 if self.ownership_file:
                     self.ownership_file.unlink(missing_ok=True)
 
     async def _attach_once(self):
+        if self.attachment is not None:
+            # Cancellation closes the helper's stdin, which shuts down only
+            # its owned kernel socket; Linux uses no global detach command.
+            self.owned_port = await self.attachment.start(self.local_port)
+            return
         command = asyncio.create_task(
             run_usbip(
                 self.usbip,
@@ -232,6 +249,12 @@ class GameReceiver:
         if cancelled:
             raise cancelled
 
+    async def _detach(self):
+        if self.attachment is not None:
+            await self.attachment.stop()
+        else:
+            await detach_owned(self.usbip, self.owned_port, self.local_port, self.serial)
+
     async def stop(self):
         self.closing = True
         for server in (self.server, self.local_server):
@@ -254,7 +277,7 @@ class GameReceiver:
                 await server.wait_closed()
         self.offers.clear()
         if self.owned_port is not None:
-            await detach_owned(self.usbip, self.owned_port, self.local_port, self.serial)
+            await self._detach()
             self.owned_port = None
             if self.ownership_file:
                 self.ownership_file.unlink(missing_ok=True)

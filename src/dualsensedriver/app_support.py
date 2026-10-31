@@ -232,3 +232,18 @@ def set_launch_at_login(enabled):
                 )
         else:
             path.unlink(missing_ok=True)
+    elif sys.platform.startswith("linux"):
+        path = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+        path = path / "autostart/triplesense.desktop"
+        if enabled:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            executable = sys.executable.replace("\\", "\\\\").replace('"', '\\"')
+            # Desktop Entry Exec expands percent field codes, even inside quotes.
+            executable = executable.replace("%", "%%")
+            path.write_text(
+                "[Desktop Entry]\nType=Application\nName=TripleSense\n"
+                f'Exec="{executable}"\nIcon=triplesense\nTerminal=false\n',
+                encoding="utf-8",
+            )
+        else:
+            path.unlink(missing_ok=True)

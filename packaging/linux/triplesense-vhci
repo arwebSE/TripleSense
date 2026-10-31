@@ -1,0 +1,95 @@
+#!/usr/bin/python3
+"""Root-owned Polkit helper for one TripleSense USB/IP loopback connection.
+
+Uses the existing Linux vhci_hcd sysfs ABI; implements no kernel driver.
+No arbitrary host, sysfs path, shell command or detach target is accepted.
+The live socket is retained and shutdown on EOF, so cleanup cannot detach a
+different device even if someone else has reassigned the former USB port.
+"""
+
+import argparse
+import fcntl
+import json
+import os
+import socket
+import struct
+import subprocess
+import sys
+from pathlib import Path
+
+VHCI = Path('/sys/devices/platform/vhci_hcd.0')
+
+
+def read_exact(stream, count):
+    result = bytearray()
+    while len(result) < count:
+        part = stream.recv(count - len(result))
+        if not part:
+            raise RuntimeError('The controller connection closed during USB import.')
+        result.extend(part)
+    return bytes(result)
+
+
+def import_controller(stream):
+    stream.sendall(struct.pack('>HHI32s', 0x111, 0x8003, 0, b'1-1'))
+    version, code, status = struct.unpack('>HHI', read_exact(stream, 8))
+    if (version, code, status) != (0x111, 3, 0):
+        raise RuntimeError('The controller could not be imported.')
+    device = read_exact(stream, 312)
+    busnum, devnum, speed, vendor, product = struct.unpack_from('>IIIHH', device, 288)
+    if device[256:288].split(b'\0', 1)[0] != b'1-1' or (vendor, product) != (0x54c, 0xce6):
+        raise RuntimeError('The local connection is not a TripleSense DualSense device.')
+    if speed != 3 or not 0 < busnum < 65536 or not 0 < devnum < 65536:
+        raise RuntimeError('Invalid virtual controller USB identity.')
+    return (busnum << 16) | devnum, speed
+
+
+def free_port(status):
+    for row in status.splitlines()[1:]:
+        columns = row.split()
+        if len(columns) >= 5 and columns[0] == 'hs' and int(columns[2]) == 4:
+            return int(columns[1])
+    raise RuntimeError('No virtual USB controller port is available.')
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--tcp-port', type=int, required=True)
+    args = parser.parse_args()
+    if os.geteuid() != 0:
+        raise RuntimeError('Linux controller setup requires administrator authorization.')
+    if not 1024 <= args.tcp_port <= 65535:
+        raise RuntimeError('Invalid local controller port.')
+    subprocess.run(['/sbin/modprobe', 'vhci_hcd'], check=True, stdout=subprocess.DEVNULL)
+    # A root-owned runtime lock serializes our helpers; the kernel rejects a
+    # concurrently occupied port if another USB/IP application wins the race.
+    lock_fd = os.open('/run/triplesense-vhci.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(lock_fd, 'w') as lock, socket.create_connection(('127.0.0.1', args.tcp_port), 10) as stream:
+        stream.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        try:
+            devid, speed = import_controller(stream)
+            stream.settimeout(None)
+            with_lock = fcntl.LOCK_EX
+            fcntl.flock(lock, with_lock)
+            try:
+                port = free_port((VHCI / 'status').read_text())
+                (VHCI / 'attach').write_text(f'{port} {stream.fileno()} {devid} {speed}')
+            finally:
+                fcntl.flock(lock, fcntl.LOCK_UN)
+            print(json.dumps({'port': port}), flush=True)
+            # The unprivileged app retains this pipe for the controller session.
+            # EOF also covers an app crash. No external input is executed.
+            sys.stdin.buffer.read(1)
+        finally:
+            try:
+                stream.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception as error:
+        print(str(error), file=sys.stderr)
+        sys.exit(1)

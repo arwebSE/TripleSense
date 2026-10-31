@@ -32,7 +32,7 @@ def notices():
             destination / ("ds5-virtual-cable-" + filename + ".txt"),
         )
     packages = []
-    for name in (
+    names = [
         "cryptography",
         "spake2",
         "zeroconf",
@@ -43,7 +43,10 @@ def notices():
         "PySide6-Essentials",
         "shiboken6",
         "pyinstaller",
-    ):
+    ]
+    if sys.platform == "linux":
+        names.append("evdev")
+    for name in names:
         distribution = importlib.metadata.distribution(name)
         folder = destination / name
         folder.mkdir(exist_ok=True)
@@ -80,8 +83,8 @@ def main():
         "--installer", action="store_true", help="Also compile the Windows installer"
     )
     args = parser.parse_args()
-    if sys.platform not in ("win32", "darwin"):
-        parser.error("Build Windows on Windows and macOS on macOS")
+    if sys.platform not in ("win32", "darwin", "linux"):
+        parser.error("Build on Windows, macOS or Linux")
     license_dir = notices()
     command = [
         sys.executable,
@@ -95,7 +98,7 @@ def main():
         str(
             ROOT
             / "src/dualsensedriver/assets"
-            / ("dsshine.ico" if sys.platform == "win32" else "dsshine.icns")
+            / ("dsshine.icns" if sys.platform == "darwin" else "dsshine.ico")
         ),
         "--add-data",
         str(ROOT / "src/dualsensedriver/assets") + ":dualsensedriver/assets",
@@ -229,6 +232,10 @@ def main():
             ],
             check=True,
         )
+    elif sys.platform == "linux":
+        from package_linux import package_linux
+
+        package_linux()
     elif args.installer:
         compiler = shutil.which("ISCC.exe")
         for base in (Path.home() / "AppData/Local/Programs", Path("C:/Program Files (x86)")):
@@ -247,9 +254,12 @@ def main():
             check=True,
         )
     executable = (
-        ROOT / "dist" / "TripleSense" / "TripleSense.exe"
-        if sys.platform == "win32"
-        else ROOT / "dist" / "TripleSense.app/Contents/MacOS/TripleSense"
+        ROOT / "dist" / "TripleSense.app/Contents/MacOS/TripleSense"
+        if sys.platform == "darwin"
+        else ROOT
+        / "dist"
+        / "TripleSense"
+        / ("TripleSense.exe" if sys.platform == "win32" else "TripleSense")
     )
     # Validate the frozen dependency stack and GUI, not just PyInstaller's exit
     # status. No hardware is opened; each smoke run uses isolated temporary data.
