@@ -56,6 +56,7 @@ class GameReceiver:
         self.ownership_file = ownership_file
         self.attachment = attachment
         self.touchpad_mouse = touchpad_mouse
+        self.mouse_output = None
 
     async def start(self):
         context = tls_context(self.credentials, server=True)
@@ -74,6 +75,10 @@ class GameReceiver:
         self.local_server = await asyncio.start_server(self._local, "127.0.0.1", 0)
         self.local_port = self.local_server.sockets[0].getsockname()[1]
         try:
+            if self.touchpad_mouse:
+                from .mouse_output import create_mouse
+
+                self.mouse_output = create_mouse()
             self.server = await asyncio.start_server(
                 self._incoming,
                 self.bind,
@@ -148,12 +153,13 @@ class GameReceiver:
                     await target.drain()
 
             if self.touchpad_mouse:
-                from .mouse_output import create_mouse
                 from .mouse_proxy import forward_responses
                 from .touchpad_mouse import TouchpadMouse
 
                 downstream = forward_responses(
-                    offer.reader, writer, lambda: TouchpadMouse(create_mouse())
+                    offer.reader,
+                    writer,
+                    lambda: TouchpadMouse(self.mouse_output, close_output=False),
                 )
             else:
                 downstream = pump(offer.reader, writer)
@@ -276,6 +282,9 @@ class GameReceiver:
             if server:
                 await server.wait_closed()
         self.offers.clear()
+        if self.mouse_output is not None:
+            self.mouse_output.close()
+            self.mouse_output = None
         if self.owned_port is not None:
             await self._detach()
             self.owned_port = None

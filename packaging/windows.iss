@@ -5,7 +5,7 @@
 [Setup]
 AppId={{E0B8344E-9715-4E9F-B769-0E0C7B51D65A}
 AppName=TripleSense
-AppVersion=0.4.16
+AppVersion=0.5.0
 AppPublisher=TripleSense contributors
 AppPublisherURL=https://github.com/arwebSE/TripleSense
 DefaultDirName={autopf}\TripleSense
@@ -16,7 +16,7 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64os
 ArchitecturesInstallIn64BitMode=x64os
 OutputDir={#ProjectRoot}\dist
-OutputBaseFilename=TripleSense-Setup-0.4.16-Windows-x64
+OutputBaseFilename=TripleSense-Setup-0.5.0-Windows-x64
 Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern

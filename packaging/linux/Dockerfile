@@ -1,12 +1,14 @@
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-bookworm AS dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libegl1 libgl1 libudev-dev libevdev-dev libxcb-cursor0 gcc libc6-dev dpkg-dev \
+    libegl1 libgl1 libglib2.0-0 libdbus-1-3 libxkbcommon0 libfontconfig1 \
+    libudev-dev libevdev-dev libxcb-cursor0 gcc libc6-dev dpkg-dev \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /source
 ENV QT_QPA_PLATFORM=offscreen
 COPY . /source
-RUN python -m pip install --no-cache-dir -e '.[controller,app,dev,build]' \
-    && ruff check src tests tools \
+RUN python -m pip install --no-cache-dir -e '.[controller,app,dev,build]'
+FROM dependencies AS build
+RUN ruff check src tests tools \
     && ruff format --check src tests tools \
     && python -m unittest discover -s tests -t . \
     && python tools/build_app.py

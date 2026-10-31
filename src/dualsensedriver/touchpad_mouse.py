@@ -15,8 +15,9 @@ from ds5bridge.protocol import decode_input
 
 
 class TouchpadMouse:
-    def __init__(self, output, *, clock=time.monotonic, speed=0.8):
+    def __init__(self, output, *, clock=time.monotonic, speed=0.8, close_output=True):
         self.output, self.clock, self.speed = output, clock, speed
+        self.close_output = close_output
         self.previous = None
         self.started = 0.0
         self.distance = 0.0
@@ -93,4 +94,5 @@ class TouchpadMouse:
                 name, self.held = self.held, None
                 self.output.button(name, False)
         finally:
-            self.output.close()
+            if self.close_output:
+                self.output.close()

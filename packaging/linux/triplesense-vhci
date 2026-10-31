@@ -12,6 +12,7 @@ import fcntl
 import json
 import os
 import socket
+import select
 import struct
 import subprocess
 import sys
@@ -60,7 +61,12 @@ def main():
         raise RuntimeError('Linux controller setup requires administrator authorization.')
     if not 1024 <= args.tcp_port <= 65535:
         raise RuntimeError('Invalid local controller port.')
-    subprocess.run(['/sbin/modprobe', 'vhci_hcd'], check=True, stdout=subprocess.DEVNULL)
+    # A cancelled authorization must not attach later if the user subsequently
+    # approves the old dialog. The app closes this pipe on cancellation.
+    if select.select([sys.stdin.buffer], [], [], 0)[0]:
+        return
+    if not VHCI.is_dir():
+        subprocess.run(['/sbin/modprobe', 'vhci_hcd'], check=True, stdout=subprocess.DEVNULL)
     # A root-owned runtime lock serializes our helpers; the kernel rejects a
     # concurrently occupied port if another USB/IP application wins the race.
     lock_fd = os.open('/run/triplesense-vhci.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)

@@ -38,7 +38,8 @@ Section: games
 Priority: optional
 Architecture: {architecture}
 Maintainer: TripleSense contributors
-Depends: python3, pkexec, kmod, libudev1, libgl1, libegl1, libxkbcommon0, libxcb-cursor0
+Depends: python3, pkexec, kmod, libudev1, libgl1, libegl1, libglib2.0-0,
+ libdbus-1-3, libxkbcommon0, libfontconfig1, libxcb-cursor0
 Description: Share a DualSense controller between computers
  Bundled desktop client and Linux USB/IP server, including controller audio.
  Uses the distribution's vhci_hcd module; no custom kernel module is installed.
