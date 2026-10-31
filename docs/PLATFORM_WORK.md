@@ -4,9 +4,8 @@ Development version: 0.5.1, not a published release.
 
 Implementation branch: `codex/platforms-and-touchpad`. At the user's request,
 the Windows app was updated to development 0.5.1 for live mouse/update testing.
-The Mac 0.4.16 app has not yet been replaced: it became unreachable before
-the 0.5.1 build could be transferred. A one-time installation job is retrying
-the previously authorized SSH hosts for up to 24 hours.
+The Mac was also updated to 0.5.1 after SSH access returned. The temporary
+retry/build jobs have finished; no recurring updater job was installed.
 
 ## Reuse decisions
 
@@ -97,15 +96,20 @@ throughput, latency or perceptual quality.
   and SHA-256 verified using an existing local test credential held in memory.
   Anonymous access produced the expected private-repository error. No credential
   is embedded or copied into the app. Newer development builds are not downgraded.
-- Mac: staging of the actual 0.4.16 DMG passed bundle ID, version and code
-  signature verification without replacing the installed bundle. New Mac 0.5.1
-  build/install and full restart validation remain pending network access.
+- Mac: 102 tests passed, one skipped, followed by frozen launch/icon/codec,
+  bundle ID/version/signature verification and installation of 0.5.1. A second
+  actual update-handoff exercise waited for the running app to quit, replaced
+  the bundle and relaunched it with a new PID. Client mode, pairing and enabled
+  audio were retained. Source-archive CRLF conversion found during installation
+  was fixed with LF attributes and defensive script normalization.
 - Mouse: native Windows pointer injection worked, and full endpoint addresses
   such as 0x84 are now covered by a paired TLS regression test. The live Windows
   trace actually used endpoint 4 and received empty interrupt-IN responses from
   the Mac. The user still reported no cursor movement after that endpoint fix.
   A direct native-backend probe connected but reported zero Bluetooth input;
   this is unresolved and must not be described as a working hardware mouse test.
+  After installation, the Mac app could be queried but had no active controller
+  connection. A physical reconnect/live touch test is still required.
 - A local, same-user diagnostics IPC command reports version, attachment,
   mouse mode, backend counters and worker liveness. It includes no raw input or
   audio buffers. Temporary Python firewall access used for tracing was removed.

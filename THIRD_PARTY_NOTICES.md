@@ -42,3 +42,7 @@ and dynamically linked Qt/PySide under the LGPL option. See
 
 LibrePadPS5, ViGEmBus, Sunshine, Moonlight, libvirtualhid and libvirtualgamepad
 were reviewed as references; no source from those projects is included.
+
+The app updater uses `keyring` (MIT) and its platform backends to store optional
+private-release credentials in the operating system credential store. The build
+includes its license and the licenses for its bundled runtime dependencies.
