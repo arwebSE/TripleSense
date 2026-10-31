@@ -16,7 +16,6 @@ from ds5emu.timing import TimerResolution
 from .credentials import tls_context
 from .diagnostics import choose_controller, find_usbip, require_controller_isolation
 from .latency import controller_activity, interactive_thread
-from .ssh import SshForward
 from .transport import HostTunnel, SecureSource
 
 log = logging.getLogger(__name__)
@@ -120,27 +119,16 @@ async def source(args) -> None:
         log.info("Source stopped")
 
 
-async def host(args, *, run_dir: Path | None = None) -> None:
+async def host(args) -> None:
     context = tls_context(Path(args.credentials), server=False)
-    forward = None
-    if getattr(args, "ssh", None):
-        if args.source != "127.0.0.1":
-            raise ValueError("With --ssh, --source must be 127.0.0.1 (on the SSH destination)")
-        forward = SshForward(
-            args.ssh, args.port, identity=args.ssh_identity, known_hosts=args.ssh_known_hosts
-        )
     tunnel = None
     usbip = find_usbip(args.usbip) if args.attach else None
     if args.attach and not usbip:
-        raise RuntimeError("Install usbip-win2 on the Sunshine host first, or provide --usbip.")
+        raise RuntimeError("Install usbip-win2 on the Windows game PC first, or provide --usbip.")
     owned_port = None
     serial = "DS5D" + uuid.uuid4().hex[:11]
     try:
-        if forward:
-            await forward.start()
-        tunnel = HostTunnel(
-            args.source, forward.port if forward else args.port, context, port=args.local_port
-        )
+        tunnel = HostTunnel(args.source, args.port, context, port=args.local_port)
         await tunnel.start()
         if usbip:
             output = await run_usbip(
@@ -170,8 +158,6 @@ async def host(args, *, run_dir: Path | None = None) -> None:
                 "--bus-id 1-1 --terse --once",
                 flush=True,
             )
-        if run_dir:
-            write_json(run_dir / "ready.json", {"tcp_port": tunnel.port, "usb_port": owned_port})
         if usbip:
 
             async def watch_tunnel():
@@ -184,9 +170,7 @@ async def host(args, *, run_dir: Path | None = None) -> None:
                         )
 
             watch = asyncio.create_task(watch_tunnel())
-            stop = asyncio.create_task(
-                wait_until_stopped(args.duration, run_dir / "stop" if run_dir else None)
-            )
+            stop = asyncio.create_task(wait_until_stopped(args.duration))
             try:
                 done, _ = await asyncio.wait([watch, stop], return_when=asyncio.FIRST_COMPLETED)
                 for task in done:
@@ -196,21 +180,15 @@ async def host(args, *, run_dir: Path | None = None) -> None:
                 stop.cancel()
                 await asyncio.gather(watch, stop, return_exceptions=True)
         else:
-            await wait_until_stopped(args.duration, run_dir / "stop" if run_dir else None)
+            await wait_until_stopped(args.duration)
     finally:
         # Only detach our returned positive port. Never use "detach --all".
         try:
             if owned_port and usbip:
                 await detach_owned(usbip, owned_port, tunnel.port, serial)
         finally:
-            try:
-                if tunnel:
-                    await tunnel.stop()
-            finally:
-                if forward:
-                    await forward.stop()
-        if run_dir:
-            write_json(run_dir / "cleanup.json", {"confirmed": True})
+            if tunnel:
+                await tunnel.stop()
 
 
 def run_role(coroutine) -> None:

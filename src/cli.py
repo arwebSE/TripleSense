@@ -26,7 +26,9 @@ def duration(value: str) -> float:
 
 
 def parser() -> argparse.ArgumentParser:
-    root = argparse.ArgumentParser(description="DualSense USB bridge for Sunshine/Moonlight")
+    root = argparse.ArgumentParser(
+        description="TripleSense controller diagnostics and developer transport tools"
+    )
     root.add_argument("--version", action="version", version=__version__)
     root.add_argument("--verbose", action="store_true")
     sub = root.add_subparsers(dest="command", required=True)
@@ -54,7 +56,7 @@ def parser() -> argparse.ArgumentParser:
     src.add_argument("--stop-file", type=Path, help="Stop gracefully when this file appears")
     src.add_argument("--synthetic", action="store_true", help="No controller; protocol tests only")
     src.add_argument("--duration", type=duration)
-    dst = sub.add_parser("host", help="Run on the Sunshine PC to receive the controller")
+    dst = sub.add_parser("host", help="Run on the gaming PC to receive the controller")
     dst.add_argument("--credentials", type=Path, required=True)
     dst.add_argument("--source", required=True, help="Controller PC's address")
     dst.add_argument("--port", type=port, default=3250)
@@ -64,22 +66,6 @@ def parser() -> argparse.ArgumentParser:
     )
     dst.add_argument("--usbip", help="Path to usbip.exe (0.9.8.1 command interface)")
     dst.add_argument("--duration", type=duration)
-    dst.add_argument(
-        "--ssh", help="Forward to source loopback through an existing user@host SSH login"
-    )
-    dst.add_argument("--ssh-identity", type=Path)
-    dst.add_argument("--ssh-known-hosts", type=Path)
-    sun = sub.add_parser("sunshine", help="Export an application entry with start/stop hooks")
-    sun.add_argument("--config", type=Path, required=True)
-    sun.add_argument("--name", default="Desktop (DualSense)")
-    sun.add_argument("--out", type=Path, required=True)
-    sun.add_argument(
-        "--elevated", action="store_true", help="Request elevated Sunshine prep commands"
-    )
-    session = sub.add_parser("session", help="Sunshine prep-command session lifecycle")
-    session.add_argument("action", choices=("start", "stop", "worker"))
-    session.add_argument("--config", type=Path, required=True)
-    session.add_argument("--run-dir", type=Path, help=argparse.SUPPRESS)
     return root
 
 
@@ -94,7 +80,7 @@ def main(argv=None) -> int:
         if args.command == "pair":
             generate_pair(args.out)
             print(f"Credentials created in {args.out.resolve()}")
-            print("Keep source/ on the controller PC; securely copy host/ to the Sunshine PC.")
+            print("Keep source/ on the controller PC; securely copy host/ to the gaming PC.")
             print("Keep both private keys private. Certificates expire after one year.")
         elif args.command in ("devices", "probe", "doctor"):
             from .diagnostics import devices, find_usbip, probe
@@ -121,28 +107,9 @@ def main(argv=None) -> int:
             run_role(source(args))
         elif args.command == "host":
             run_role(host(args))
-        elif args.command == "sunshine":
-            from .sunshine import export_app
-
-            entry = export_app(args.config, name=args.name, elevated=args.elevated)
-            with args.out.open("x", encoding="utf-8") as stream:
-                json.dump(entry, stream, indent=2)
-                stream.write("\n")
-            print(f"Sunshine application entry written to {args.out.resolve()}")
-        elif args.command == "session":
-            from .sunshine import start_session, stop_session, worker
-
-            if args.action == "start":
-                start_session(args.config)
-            elif args.action == "stop":
-                stop_session(args.config)
-            elif args.run_dir:
-                worker(args.config, args.run_dir)
-            else:
-                root.error("session worker requires --run-dir")
         return 0
     except KeyboardInterrupt:
         return 130
     except (OSError, RuntimeError, ValueError, ImportError, TimeoutError) as exc:
-        print(f"ds5driver: {exc}", file=sys.stderr)
+        print(f"triplesense: {exc}", file=sys.stderr)
         return 1

@@ -1,9 +1,10 @@
 include README.md
 recursive-include docs *.md
-recursive-include examples *.json
-recursive-include scripts *.ps1 *.command
+recursive-include scripts *.ps1
 recursive-include tools *.py
-recursive-include packaging *.py *.iss *.txt
+recursive-include packaging *.py *.iss *.txt *.md
+include packaging/linux/Dockerfile packaging/linux/triplesense-vhci
+recursive-include src/native *.m
 recursive-include tests *.py
 recursive-include vendor/ds5-virtual-cable/docs *.md
 recursive-include vendor/ds5-virtual-cable/emulator/tests *.py

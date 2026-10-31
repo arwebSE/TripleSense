@@ -1,85 +1,84 @@
-# Architecture and reference research
+# Architecture
 
-ViGEmBus emulates Xbox 360 / DS4, not native DualSense. Current Sunshine has
-since added libvirtualhid and a separately licensed Windows driver. Moonlight
-common-c already exposes `ConnListenerSetAdaptiveTriggers`; trigger rumble and
-adaptive-trigger effect payloads must not be confused.
+TripleSense forwards a Bluetooth DualSense as a virtual USB controller on another
+computer, independently of streaming software.
 
-The open-source libvirtualgamepad VHF DS5 profile is another HID foundation.
-Its documentation identifies the absent USB audio function as a limitation for
-audio-driven HD haptics. A virtual HID descriptor here would have that limit.
+```text
+Bluetooth DualSense ⇄ Client / controller engine ⇄ paired TLS ⇄ Server
+                                                             ⇅
+                                                   loopback USB/IP
+                                                             ⇅
+                                              virtual USB controller + audio
+                                                             ⇅
+                                                            game
+```
 
-This prototype instead reuses a complete USB/IP DualSense device model and
-Bluetooth bridge. Windows' ordinary HID/audio class drivers bind through the
-separately installed usbip-win2 virtual USB bus. New code stays in user mode.
-Maintaining a new kernel bus driver would not alone solve the network/audio gap.
+The pinned [ds5-virtual-cable engine](UPSTREAM.md) supplies USB descriptors,
+Bluetooth report conversion and audio codecs. TripleSense adds desktop lifecycle,
+paired remote transport, discovery, platform adapters and packaging. It does not
+implement a new kernel bus driver.
 
-| Feature | Virtual USB path | Bluetooth path |
+## Application layers
+
+| Modules | Responsibility |
+| --- | --- |
+| `app.py`, `desktop.py`, `app_support.py` | UI, worker/event lifecycle, settings and discovery coordination. |
+| `pairing.py`, `credentials.py`, `server_identity.py`, `saved_servers.py` | Enrollment, identities and saved Server profiles. |
+| `reverse.py`, `transport.py`, `runtime.py` | Authenticated connections, USB/IP forwarding and owned Windows attachment/cleanup. |
+| `controller.py`, `macos_bluetooth.py`, `native/macos_bluetooth.m`, `latency.py` | Physical Bluetooth backend and platform scheduling/transport adapters. |
+| `lan.py`, `vpn.py` | LAN advertisements and direct queries to known VPN peers. |
+| `linux_vhci.py`, `packaging/linux/triplesense-vhci` | Linux kernel attachment through a scoped privileged helper. |
+| `mouse_proxy.py`, `touchpad_mouse.py`, `mouse_output.py` | Optional touch filtering/gestures and OS pointer injection. |
+| `updates.py`, `update_dialog.py`, `assets/update-*` | GitHub package selection, verification, staging and installation. |
+| `setup.py`, `windows_taskbar.py` | Installed Windows setup repair and shell identity. |
+| `cli.py`, `diagnostics.py` | Developer commands and controller/driver diagnostics. |
+
+## Pairing and connection
+
+The Server listens on TCP 3250. The Client initiates authenticated connections;
+its physical controller does not need an incoming network listener. A loopback
+USB/IP endpoint gives the Server's virtual bus access to the offered device.
+
+PIN pairing on TCP 3251 uses SPAKE2, authenticated encryption and mutual key
+confirmation. Codes are short-lived, rate-limited and single-use. Saved sessions
+use mutual TLS 1.3 with a private CA and fixed peer identities. The CA private key
+is not saved and the system trust store is not changed.
+
+Discovery uses mDNS and UDP 3252 LAN broadcasts/direct queries to VPN peers.
+Advertisements identify candidates; they do not authenticate a Server. Address
+updates must preserve the paired identity and an explicitly selected VPN route.
+No Moonlight credentials or stream session keys are read.
+
+## Controller and audio contract
+
+| Feature | Virtual USB | Bluetooth |
 | --- | --- | --- |
-| Buttons, touch, IMU, battery | HID IN 0x84 | Input 0x31 |
-| Rumble, adaptive triggers, LEDs | HID OUT 0x03 / control | SetState 0x31 |
-| Calibration, pairing, firmware | Feature GET_REPORT | Live features, converted for USB |
-| Speaker and detailed haptics | Iso OUT 0x01, 4 PCM channels | 0x39: Opus plus haptic samples |
+| Buttons, touch, motion, battery | HID IN 0x84 | Input 0x31 |
+| Rumble, triggers, LEDs | HID OUT/control | SetState 0x31 |
+| Calibration, pairing, firmware | Feature GET_REPORT | Live features converted for USB |
+| Speaker and detailed haptics | Iso OUT 0x01, four PCM channels | 0x39 audio/haptic payloads |
 | Microphone | Iso IN 0x82 | Multiplexed microphone payloads |
 
-This table describes the inherited contract; game acceptance is separate.
-The current physical-source profile is standard 054C:0CE6 over Bluetooth.
+This describes the inherited transport contract, not a game-compatibility claim.
+Audio defaults on; disabling it prevents microphone arming and audio output.
+TCP scheduling, packet loss and Bluetooth/audio buffers affect latency and quality.
+See [status](STATUS.md) and [Bluetooth research](research/BLUETOOTH_AUDIO.md).
 
-## Desktop connection
+## Ownership and shutdown
 
-The standalone app uses controller-initiated connections. Windows listens on
-TCP 3250 with the TLS server identity; the Mac holds the TLS client identity
-and offers two outgoing connections. A loopback-only Windows USB/IP listener
-claims an offered connection when the signed bus driver needs it. The same
-USB device model handles requests over that authenticated connection. No
-incoming Mac listener or SSH forward is involved.
+Only one importer owns the physical backend. Disconnect releases trigger/rumble
+effects, closes audio alternate settings and stops the backend. Quit waits for
+pending attachment work and cleans up the owned virtual device.
 
-PIN pairing on TCP 3251 uses SPAKE2 plus authenticated credential transfer and
-mutual key confirmation. The code is short-lived, rate-limited and single-use.
-Discovery sees `_dsshine._tcp` advertisements but does not
-treat discovery data as proof of identity. The desktop app does not borrow
-Moonlight credentials or join Moonlight's streaming connection.
+Windows uses usbip-win2's returned port plus a session serial and loopback location
+to verify ownership before detach. A private journal supports crash recovery; a
+port reassigned to another device is left alone. Linux uses the kernel's
+`vhci_hcd`; its root-owned helper validates the local device and owns one socket,
+which is closed on cancellation/EOF. Neither path globally detaches devices.
 
-The app owns attachment/detachment directly, without Sunshine application
-hooks. A private ownership record supports recovery after an app crash. Port
-and unique serial checks still apply before detach. Quit waits for a pending
-attach command to finish recording ownership, then cleans up that device.
-Experimental controller audio defaults on; its disabled path does not arm the
-Bluetooth microphone or queue audio output.
+The Polkit helper, Windows signed bus driver and installer elevation are distinct
+from the ordinary unprivileged app. macOS Server has no working backend yet; its
+virtual-device permission and audio requirements are recorded in [status](STATUS.md).
 
-## Ownership and security
-
-For the original CLI connection, the source requires a paired client certificate over TLS 1.3. The host verifies
-the private CA and fixed server identity. Certificates have distinct server /
-client usages; the CA private key is never saved. No system trust store changes.
-
-Plain USB/IP is exposed only on host loopback. The tunnel moves bytes with
-backpressure and TCP_NODELAY without reducing the device to DS4/XInput. Only one
-importer owns the source. Closing its connection queues trigger/rumble release
-and closes audio alternate settings. Source shutdown drains network tasks and
-stops the physical backend. Host shutdown detaches only the positive port
-returned by `usbip attach --terse`.
-Before detaching, it rechecks both the loopback location and the unique session
-serial so a reassigned port is left untouched. Inactive USB devices stay attached;
-TCP keepalive handles broken links, while transfer payload reads have a timeout.
-
-TCP head-of-line blocking and remote USB scheduling remain constraints. Existing
-Bluetooth PCM/Opus buffers add latency. The ~250 Hz local virtual input rate is
-not an end-to-end latency measurement. LAN and perceptual tests are required.
-
-## Primary sources
-
-- [LibrePadPS5](https://github.com/arwebSE/LibrePadPS5): ownership, recovery and
-  diagnostics lessons. Its PS5 input service layer is platform-specific; published
-  limitations exclude game-driven rumble and audio. No source copied.
-- [ViGEmBus](https://github.com/nefarius/ViGEmBus): existing emulation scope.
-- [Sunshine](https://github.com/LizardByte/Sunshine): app hooks, input disable
-  setting, platform backend structure.
-- [New Sunshine input stack](https://app.lizardbyte.dev/2026-08-16-introducing-libvirtualhid-and-virtual-hid-driver/): official alternative.
-- [Moonlight common-c](https://github.com/moonlight-stream/moonlight-common-c):
-  adaptive-trigger callback and streaming protocol.
-- [libvirtualgamepad DS5](https://github.com/Nonary/libvirtualgamepad/blob/main/docs/DS5_USB_COMPATIBILITY.md): native HID requirements and USB audio limitation.
-- [ds5-virtual-cable](https://github.com/Macle57/ds5-virtual-cable): selected
-  USB/audio/BT foundation, exact revision in THIRD_PARTY_NOTICES.md.
-- [usbip-win2 0.9.8.1](https://github.com/vadimgrn/usbip-win2/releases/tag/v.0.9.8.1):
-  separately installed driver and CLI contract.
+The retained manual developer `source`/`host` roles use the same TLS/device model
+with explicit credentials. They are separate from the desktop connection flow.

@@ -1,174 +1,117 @@
-# TripleSense development
+# Development
 
-This guide is for contributors. For installation and everyday use, start with
-[the user README](../README.md).
+For installation and daily use, start with the [README](../README.md) or
+[user guide](GUIDE.md). This page is for building, testing and diagnosing TripleSense.
 
-[Architecture](ARCHITECTURE.md) · [Upstream comparison](UPSTREAM.md) ·
-[Platform roadmap](ROADMAP.md) · [Validation evidence](VALIDATION.md) ·
-[Third-party notices](../THIRD_PARTY_NOTICES.md)
+[Architecture](ARCHITECTURE.md) · [Compatibility and roadmap](STATUS.md) ·
+[Upstream credits](UPSTREAM.md) · [Third-party notices](../THIRD_PARTY_NOTICES.md)
 
-Version 0.5.1 includes experimental Linux packaging/Server and touchpad mouse output.
-See [Linux preview setup](LINUX.md) and [platform validation and macOS Server
-prerequisites](PLATFORM_WORK.md). These features are included in release 0.5.1 with the documented validation limits.
+## Source layout
 
-A streaming-independent Windows DualSense device bridge, targeting native
-controller input, adaptive triggers, and the audio path used for detailed haptics.
+| Directory | Purpose |
+| --- | --- |
+| `src/` | Application modules, assets and native Mac Bluetooth helper. |
+| `tests/` | Application, protocol, lifecycle, networking and UI regressions. |
+| `tools/` | Builds, packaging, icon generation and hardware/kernel probes. |
+| `packaging/` | Installers, Linux helper/container and bundled license notices. |
+| `scripts/` | Pinned Windows driver download/verification. |
+| `vendor/ds5-virtual-cable/` | Pinned controller engine, its tests and required notices/reference data. |
+| `docs/` | User/developer guides, current status and focused Bluetooth research. |
 
-**Desktop preview:** TripleSense now has a standalone Windows/Mac app with LAN
-discovery, one-time PIN pairing, automatic reconnection and safe shutdown when the main window closes.
-The Windows installer includes the free signed controller-bus driver and setup
-for local-network access. Users do not need Python, SSH, manual certificates or prep commands.
-See [standalone setup](STANDALONE.md). The CLI below remains available for
-development and diagnostics.
+Setuptools maps the flat `src/` directory to the existing `dualsensedriver` Python
+import name. Desktop and console entry points are named TripleSense; old CLI
+aliases and private data identities remain compatible. The frozen builder stages
+a package under `build/` so PyInstaller can analyze the same modules.
 
-The command is `triplesense`; `dsshine` and `ds5driver` remain compatible aliases.
-Repository: [arwebSE/TripleSense](https://github.com/arwebSE/TripleSense).
+## Environment
 
-**Development prototype.** Local Windows USB/HID/audio enumeration, live input,
-physical adaptive-trigger mode readback, microphone capture, acoustic speaker
-output, four-channel PCM transport and Sunshine start/stop commands have passed.
-Mac-to-Windows input, native USB enumeration, trigger readback and microphone
-signal have also passed. The user confirmed inputs, vibration and adaptive
-triggers in the Windows browser tester. The older Mac HID transport dropped
-Bluetooth audio frames; the native Mac transport has since passed
-live speaker and microphone signal tests. Audio tests require Steam isolation on
-the source PC. Game compatibility and subjective haptic quality remain unverified.
-See [validation](VALIDATION.md) for current evidence.
-
-## How it works
+Use Python 3.11 or later; Python 3.12 is used in CI. Install an editable checkout
+in a virtual environment:
 
 ```text
-Controller PC (Moonlight)                    Game PC (Sunshine, Windows)
-Bluetooth DualSense                         Game -> DualSense HID + USB audio
-       |                                                    |
-Physical HID / audio codec <--- mutual TLS ---> localhost USB/IP tunnel
-       |                                                    |
-ds5-virtual-cable device emulator                   usbip-win2 UDE driver
+python -m pip install -e ".[controller,app,build,dev]"
+python -m dualsensedriver.app
 ```
 
-Sunshine/Moonlight carry the stream as usual. This companion carries full
-controller USB traffic separately, including four-channel speaker/haptic audio.
-Sunshine's existing app preparation commands start/stop it. A fork is not
-required for this first path. It does not appear in Sunshine's gamepad selector.
+The desktop app owns pairing and connection lifecycle. The earlier Sunshine
+prep-command/session launcher and SSH forwarding wrapper have been retired;
+normal operation needs neither. Existing external launch hooks should be removed
+when switching to the desktop app.
 
-The base is the MIT-licensed
-[ds5-virtual-cable](https://github.com/Macle57/ds5-virtual-cable) emulator and
-Bluetooth bridge, pinned under `vendor/`. The virtual USB bus uses the separately
-installed [usbip-win2](https://github.com/vadimgrn/usbip-win2) driver. This project
-adds authenticated remote transport, role commands, diagnostics and Sunshine
-lifecycle integration. It does not implement a new custom kernel driver.
+On Linux, build dependencies include the compiler, libudev/libevdev headers and
+Qt runtime libraries; [the build container](../packaging/linux/Dockerfile) lists
+the exact Debian dependencies. End-user packages include Python and Qt.
 
-A HID-only DS5 emulation can forward trigger effects but lacks the USB audio
-function used for audio-driven haptics. Preserving that function provides the
-needed path; perceptual equivalence to a wired controller still needs testing.
-
-## Developer / CLI setup
-
-Windows x64 host, Python 3.11+, and a **standard DualSense over Bluetooth** on
-the controller PC. For the tested macOS Bluetooth source and its audio limits, see
-[Mac Moonlight setup](MACOS.md). USB-connected sources and Edge controllers
-are not yet supported by this integration.
-Exit Steam on the **physical-controller PC** before starting the source or live
-tests. Its raw Bluetooth mappings include PS + L2 opening Magnifier; unintended
-shortcuts appeared during microphone tests with Steam active. The source checks this
-and refuses to start with Steam running. Steam on a separate Sunshine host is
-fine; the host sees only the translated virtual USB controller.
-
-```powershell
-uv venv --python 3.12
-uv sync --locked --extra controller --extra dev --extra app
-.venv/Scripts/ds5driver.exe doctor
-.venv/Scripts/ds5driver.exe probe --seconds 3
-```
-
-The controller PC needs the `controller` extra; the host needs only the base
-package. Development on one PC works, but both physical and virtual controllers
-will be visible during local game tests.
-
-## Two-PC use
-
-1. On the controller PC, generate a private credential pair and run the source:
-
-   ```powershell
-   .venv/Scripts/ds5driver.exe pair --out .credentials/pair
-   .venv/Scripts/ds5driver.exe devices
-   .venv/Scripts/ds5driver.exe source --credentials .credentials/pair/source --bind 0.0.0.0 --serial YOUR_CONTROLLER_SERIAL
-   ```
-
-   Securely copy only `host/` to the Sunshine PC. Both role folders contain
-   private keys: never upload them. Allow TCP 3250 from the Sunshine PC through
-   the controller PC's private-network firewall. Default binding is loopback.
-   Certificates expire after one year; generate a fresh pair to renew/revoke.
-
-2. Install the pinned, signed driver on the Sunshine host:
-
-   ```powershell
-   # Download/verify only:
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Install-HostDriver.ps1
-   # Install from Administrator PowerShell:
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Install-HostDriver.ps1 -Install
-   ```
-
-   The script pins upstream 0.9.8.1 by SHA-256 and checks Authenticode. It changes
-   no Secure Boot/test-signing settings and forces no restart. Review an existing
-   USB/IP installation before upgrading. No replacement driver is installed on
-   the physical controller; HidHide is not installed.
-
-3. On the Sunshine PC, test manually:
-
-   ```powershell
-   .venv/Scripts/ds5driver.exe host --credentials .credentials/pair/host --source CONTROLLER_PC_IP --attach
-   ```
-
-   Ctrl+C detaches only this process's USB port. Driver access may require an
-   Administrator terminal. This uses the 0.9.8.1 command interface.
-
-4. Configure Sunshine's app hooks using [the integration guide](SUNSHINE.md).
-   Disable ordinary forwarded controller input to avoid a second emulated pad.
-   Disable Steam Input for native DualSense game testing. The game must support
-   the effects itself; the bridge cannot add them to an XInput-only game.
-
-This prototype targets a trusted, low-latency LAN. TCP packet loss and USB/BT
-audio buffering add latency. WAN operation and subjective fidelity are untested.
-
-## Verification
-
-```powershell
-.venv/Scripts/ruff.exe check src tests tools
-.venv/Scripts/python.exe -m unittest discover -s tests -t . -v
-.venv/Scripts/python.exe -m unittest discover -s vendor/ds5-virtual-cable/emulator/tests -t vendor/ds5-virtual-cable/emulator
-# Real controller, no driver needed:
-.venv/Scripts/python.exe tools/verify_live.py
-# Installed host driver, administrator access may be required:
-.venv/Scripts/python.exe tools/verify_windows.py
-# Optional trigger and silent audio tests:
-uv sync --locked --extra controller --extra dev --extra hardware-test
-.venv/Scripts/python.exe tools/verify_windows.py --effects --audio
-# Microphone capture and a quiet speaker tone; save signal statistics only:
-.venv/Scripts/python.exe tools/verify_windows.py --microphone --speaker
-```
-
-Transport tests cover certificate rejection, native identity/input, exact
-adaptive-trigger bytes, four-channel PCM, single importer ownership and release
-on disconnect. They do not establish game or physical-effect compatibility.
-Hardware captures and credentials are ignored by Git. See
-[architecture](ARCHITECTURE.md) and [attribution](../THIRD_PARTY_NOTICES.md).
-
-## Building the desktop apps
-
-Build on the target platform with Python 3.11+:
+## Tests
 
 ```text
-python -m pip install -e ".[controller,app,build]"
+python -m ruff check src tests tools
+python -m ruff format --check src tests tools
+python -m unittest discover -s tests -t .
+python -m unittest discover -s vendor/ds5-virtual-cable/emulator/tests -t vendor/ds5-virtual-cable/emulator
+```
+
+The main suite uses synthetic controllers and isolated settings. It covers
+pairing/authentication, saved servers, discovery, attachment ownership, cleanup,
+cancellation, audio toggling, updates and mouse filtering. Synthetic success does
+not establish physical audio, haptics or game compatibility.
+
+Hardware tools are separate and may open a controller or create a virtual device:
+
+| Tool | Purpose |
+| --- | --- |
+| `tools/verify_live.py` | Real Bluetooth input/features through a local TLS/USB-IP tunnel, without a Windows driver. |
+| `tools/verify_windows.py` | Windows virtual HID/audio enumeration, owned detach, and optional effect/audio signal checks. Use `--help` for options. |
+| `tools/profile_bt_audio.py` | Bluetooth capacity and scalar audio diagnostics. |
+| `tools/test_linux_vhci.py` | Root-only synthetic virtual USB/kernel test; full mode also checks ALSA. |
+| `tools/test_linux_mouse.py` | Actual Linux uinput pointer/button/wheel test. |
+
+Close software using the physical controller, especially Steam on the Client,
+before live tests. Signal measurements do not establish subjective audio quality.
+Credentials, device identifiers and captures stay out of Git; do not commit keys
+or microphone recordings. See [current evidence and acceptance work](STATUS.md).
+
+The console command `triplesense --help` exposes diagnostics plus manual
+`pair`, `source` and `host` roles for isolated transport work. These roles use
+explicit private TLS credentials and are not the desktop pairing flow. The
+`host` role attaches through Windows USB/IP; Linux desktop attachment uses its
+separate helper. Do not document these commands as required user setup.
+
+## Desktop builds
+
+Build on the target platform:
+
+```text
 python tools/build_app.py
 ```
 
-On Windows, first run `scripts/Install-HostDriver.ps1` without `-Install` to
-download and verify the pinned driver installer. Install Inno Setup 6 and use
-`python tools/build_app.py --installer` to create the setup executable. Neither
-Python nor Inno Setup is needed on users' computers.
+Windows builds first need the pinned driver download, verified by
+`scripts/Install-HostDriver.ps1` without `-Install`. Install Inno Setup 6 and use
+`python tools/build_app.py --installer` to produce the setup executable. The script's
+`-Install` option is for deliberate local driver setup, not an ordinary build.
 
-The app bundle includes dependency licenses. Shared Qt libraries remain
-replaceable. Developer ID signing and notarization require release credentials
-and are not simulated by the build. GitHub Actions builds downloadable desktop
-artifacts with the **Build desktop app** workflow.
+macOS builds compile the native Bluetooth transport and produce an app, DMG and
+ZIP. Release builds currently use local signatures; Developer ID signing and
+notarization require release credentials.
+
+Linux builds produce an architecture-specific Debian package with desktop
+launcher, udev rules and the narrowly scoped Polkit helper. The app stays
+unprivileged. Use an isolated kernel fixture for attachment tests; never detach
+all USB/IP devices or stop unrelated Docker workloads.
+
+The builder verifies frozen launch, codecs and app icons using temporary settings.
+Windows checks include taskbar identity. Shared Qt libraries remain replaceable;
+license files are bundled. `Build desktop app` is the CI packaging workflow.
+
+## Releases and updates
+
+Update the application version, project metadata and Windows installer together.
+Build/test packages, publish matching assets and `SHA256SUMS.txt` to GitHub, and
+record experimental limitations in the release notes. The updater selects the
+matching OS/architecture asset and verifies GitHub's SHA-256/size before staging.
+Installation waits for safe app shutdown, then installs and relaunches. Private
+release access uses the OS credential store; never embed a maintainer token.
+
+Source distributions must retain the native Mac source, Linux helper/container,
+installer templates, license notices and inherited test fixtures. Keep
+`MANIFEST.in` and package-data rules in sync when moving files.

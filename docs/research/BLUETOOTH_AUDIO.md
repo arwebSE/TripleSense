@@ -1,10 +1,13 @@
 # Bluetooth audio validation
 
+Transport investigation covering the native Mac path and failed earlier HID
+experiments. This is not a setup guide or the current release status;
+see [current validation](../STATUS.md) and [user guide](../GUIDE.md).
+
 Bluetooth speaker, microphone and detailed haptics remain required features.
 The native Mac path has passed short installed-app speaker/microphone checks.
 Keep preview status until broader hardware and sustained mixed haptics testing
 are complete.
-Touchpad mouse control is deferred to a future update.
 
 ## Owned-channel breakthrough
 

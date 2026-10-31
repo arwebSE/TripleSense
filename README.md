@@ -10,7 +10,7 @@
   <a href="https://github.com/arwebSE/TripleSense/releases/latest">Download</a> ·
   <a href="#get-connected">Get started</a> ·
   <a href="#supported-platforms">Compatibility</a> ·
-  <a href="docs/STANDALONE.md">Help</a>
+  <a href="docs/GUIDE.md">Help</a>
 </p>
 
 TripleSense connects a DualSense beside you to games running on another computer.
@@ -99,7 +99,7 @@ NetBird still needs a full live controller test.
 Release **0.5.1** includes experimental Linux packaging, touchpad mouse mode
 and in-app updates. The Linux download currently targets ARM64 Debian/Ubuntu.
 Linux has passed isolated kernel input tests; physical Bluetooth and audio
-testing are still pending. See the [Linux preview](docs/LINUX.md) for details.
+testing are still pending. See the [Linux preview](docs/GUIDE.md#permissions-and-installation) for details.
 
 ## Controller audio
 
@@ -135,11 +135,11 @@ while keeping ordinary controller input and feedback available.
 | Audio drops out | Disconnect and turn off **Controller audio** to check input separately. Audio remains preview functionality. |
 
 Open **Logs** in the app for connection details. More help is in the
-[setup and troubleshooting guide](docs/STANDALONE.md).
+[setup and troubleshooting guide](docs/GUIDE.md).
 
 Use **Settings → Updates** to download an update and choose **Install and restart**.
 Settings and pairings are kept. Versions before 0.5.1 need one manual update
-using the Windows installer or replacement Mac app. See [updates](docs/UPDATES.md).
+using the Windows installer or replacement Mac app. See [updates](docs/GUIDE.md#updates).
 
 ## Open source
 
@@ -152,5 +152,5 @@ computers, with discovery, saved servers and desktop apps. See
 
 Previously called **DSShine**. Renaming or updating keeps existing pairings.
 
-Want to contribute? Start with the [development guide](docs/DEVELOPMENT.md),
-[platform roadmap](docs/PRODUCT.md) and [test results](docs/PLATFORM_WORK.md).
+Want to contribute? Start with the [development guide](docs/DEVELOPMENT.md) and
+[compatibility and roadmap](docs/STATUS.md).
