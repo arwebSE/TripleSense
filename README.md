@@ -129,7 +129,7 @@ while keeping ordinary controller input and feedback available.
 | Problem | Try this |
 | --- | --- |
 | Server does not appear | Enter its LAN or VPN address manually. Check local-network permissions and VPN access rules. |
-| Windows refuses the connection | Use **Settings → Repair Windows setup** to repair the driver and firewall rules. |
+| Windows refuses the connection | Use **Settings → Windows setup → Repair** to repair the driver and firewall rules. |
 | Controller is asleep | Press **PS** to reconnect it. |
 | Input or effects are missing | Close Steam on the Client computer and check for duplicate controller forwarding in your streaming app. |
 | Audio drops out | Disconnect and turn off **Controller audio** to check input separately. Audio remains preview functionality. |
@@ -137,7 +137,7 @@ while keeping ordinary controller input and feedback available.
 Open **Logs** in the app for connection details. More help is in the
 [setup and troubleshooting guide](docs/GUIDE.md).
 
-Use **Settings → Updates** to download an update and choose **Install and restart**.
+Use **Settings → App updates → Check** to download an update and choose **Install and restart**.
 Settings and pairings are kept. Versions before 0.5.1 need one manual update
 using the Windows installer or replacement Mac app. See [updates](docs/GUIDE.md#updates).
 

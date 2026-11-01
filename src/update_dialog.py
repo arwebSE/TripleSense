@@ -42,7 +42,7 @@ class UpdateDialog(QDialog):
         self.bar.hide()
         layout.addWidget(self.bar)
         row = QHBoxLayout()
-        self.access = QPushButton("GitHub access…")
+        self.access = QPushButton("GitHub access")
         self.access.clicked.connect(self._access)
         row.addWidget(self.access)
         row.addStretch()
@@ -168,7 +168,7 @@ class UpdateDialog(QDialog):
         token_input.setEchoMode(QLineEdit.EchoMode.Password)
         token_input.setPlaceholderText("GitHub access token")
         layout.addWidget(token_input)
-        create = QPushButton("Create a token on GitHub…")
+        create = QPushButton("Create a token on GitHub")
         create.clicked.connect(
             lambda: QDesktopServices.openUrl(
                 QUrl("https://github.com/settings/personal-access-tokens/new")

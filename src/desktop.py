@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
@@ -516,14 +517,51 @@ class Window(QMainWindow):
         self.settings.setWindowTitle("TripleSense settings")
         self.settings.setMinimumWidth(480)
         layout = QVBoxLayout(self.settings)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(16)
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
+        layout.setContentsMargins(20, 20, 20, 16)
+        layout.setSpacing(12)
         layout.addWidget(label("Settings", "heading"))
-        self.login = QCheckBox("Start TripleSense when I log in")
+
+        def section(title):
+            layout.addWidget(label(title, "muted"))
+            card = QFrame()
+            card.setObjectName("card")
+            card.setMinimumWidth(440)
+            content = QVBoxLayout(card)
+            content.setContentsMargins(14, 12, 14, 12)
+            content.setSpacing(12)
+            layout.addWidget(card)
+            return content
+
+        def action_row(content, title, description, action, callback):
+            row = QWidget()
+            fields = QHBoxLayout(row)
+            fields.setContentsMargins(0, 0, 0, 0)
+            fields.setSpacing(14)
+            text = QVBoxLayout()
+            text.setSpacing(3)
+            text.addWidget(label(title))
+            detail = label(description, "muted", wrap=True)
+            detail.setStyleSheet("font-size:12px;")
+            text.addWidget(detail)
+            fields.addLayout(text, 1)
+            control = button(action, callback)
+            control.setMinimumWidth(76)
+            fields.addWidget(control)
+            content.addWidget(row)
+            return row, control
+
+        preferences = section("Preferences")
+        self.login = QCheckBox("Open TripleSense at login")
         self.login.setChecked(bool(self.preferences.get("launch_at_login", False)))
         self.login.setEnabled(bool(getattr(sys, "frozen", False)))
+        self.login.setToolTip(
+            "Start automatically when you sign in"
+            if getattr(sys, "frozen", False)
+            else "Available in the installed app"
+        )
         self.login.toggled.connect(self._login_changed)
-        layout.addWidget(self.login)
+        preferences.addWidget(self.login)
         self.auto = QCheckBox("Reconnect automatically")
         self.auto.setChecked(bool(self.preferences.get("auto_connect", True)))
         self.auto.toggled.connect(
@@ -531,39 +569,52 @@ class Window(QMainWindow):
                 self.engine.update_preferences("auto_connect", enabled)
             )
         )
-        layout.addWidget(self.auto)
+        preferences.addWidget(self.auto)
         self.mouse = QCheckBox("Use touchpad as mouse")
         self.mouse.setChecked(bool(self.preferences.get("touchpad_mouse", False)))
-        self.mouse.setToolTip("One finger moves; tap or click selects; two fingers scroll.")
         self.mouse.toggled.connect(
             lambda enabled: self.engine.submit(
                 self.engine.update_preferences("touchpad_mouse", enabled)
             )
         )
-        layout.addWidget(self.mouse)
-        self.repair_button = button("Repair Windows setup…", self._repair_setup)
-        layout.addWidget(self.repair_button)
-        self.setup_note = label(
-            "Repairs the controller driver and local-network access.", "muted", wrap=True
-        )
-        layout.addWidget(self.setup_note)
-        layout.addWidget(button("Network permissions…", self._open_network_permissions))
-        from .update_dialog import UpdateDialog
-
-        self.updater = UpdateDialog(self)
-        self.updater.available.connect(lambda _version: self.update_notice.show())
-        self.check_updates = QCheckBox("Check for updates automatically")
+        preferences.addWidget(self.mouse)
+        self.check_updates = QCheckBox("Check for updates at startup")
         self.check_updates.setChecked(self.preferences.get("check_updates", True))
         self.check_updates.toggled.connect(
             lambda enabled: self.engine.submit(
                 self.engine.update_preferences("check_updates", enabled)
             )
         )
-        layout.addWidget(self.check_updates)
-        layout.addWidget(button("Updates…", self._open_updates))
-        close = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        close.rejected.connect(self.settings.hide)
-        layout.addWidget(close)
+        preferences.addWidget(self.check_updates)
+
+        support = section("App and connection")
+        action_row(
+            support, "App updates", "Download and install new versions", "Check", self._open_updates
+        )
+        action_row(
+            support,
+            "Local network access" if sys.platform == "darwin" else "Network settings",
+            "Allow TripleSense on your network"
+            if sys.platform == "darwin"
+            else "View your computer's network settings",
+            "Open",
+            self._open_network_permissions,
+        )
+        self.repair_row, self.repair_button = action_row(
+            support,
+            "Windows setup",
+            "Repair the controller driver and firewall",
+            "Repair",
+            self._repair_setup,
+        )
+        from .update_dialog import UpdateDialog
+
+        self.updater = UpdateDialog(self)
+        self.updater.available.connect(lambda _version: self.update_notice.show())
+        footer = QHBoxLayout()
+        footer.addStretch(1)
+        footer.addWidget(button("Close", self.settings.hide))
+        layout.addLayout(footer)
 
     def _open_updates(self):
         self.updater.show()
@@ -597,8 +648,7 @@ class Window(QMainWindow):
         self.audio_box.setVisible(not server)
         self.auto.setVisible(not server)
         self.mouse.setVisible(server)
-        self.repair_button.setVisible(server and sys.platform == "win32")
-        self.setup_note.setVisible(server and sys.platform == "win32")
+        self.repair_row.setVisible(server and sys.platform == "win32")
         self.peer_label.setText("Saved client" if server else "Saved server")
         for widget in (self.peer_gap, self.peer_label, self.peer_name, self.addresses):
             widget.setVisible(server)
@@ -979,6 +1029,7 @@ class Window(QMainWindow):
             self.on_event("error", str(exc))
 
     def _open_settings(self):
+        self.settings.adjustSize()
         self.settings.show()
         self.settings.raise_()
 
@@ -992,6 +1043,8 @@ class Window(QMainWindow):
                 "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_LocalNetwork"
                 if sys.platform == "darwin"
                 else "ms-settings:network-status"
+                if sys.platform == "win32"
+                else "https://github.com/arwebSE/TripleSense/blob/main/docs/GUIDE.md#lan-tailscale-and-netbird"
             )
         )
 
@@ -1124,7 +1177,9 @@ class Window(QMainWindow):
             self.connected = False
         elif kind == "driver_needed":
             self.status.setText("Server setup needed")
-            self.description.setText("Open Settings → Repair Windows setup to install the driver.")
+            self.description.setText(
+                "Open Settings → Windows setup → Repair to install the driver."
+            )
         elif kind == "paired":
             self.code.clear()
             self.pages.setCurrentWidget(self.connection_page)

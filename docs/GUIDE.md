@@ -52,7 +52,7 @@ connection. No router port forwarding is needed.
 Windows setup creates app-specific firewall rules for local subnets and
 `100.64.0.0/10`, covering Tailscale and default NetBird address ranges, on Private
 and Public network profiles. Custom VPN ranges need matching firewall rules.
-Use **Settings → Repair Windows setup** to restore the included driver and rules.
+Use **Settings → Windows setup → Repair** to restore the included driver and rules.
 
 Linux packaging does not change your firewall. Permit the same ports from your
 LAN and trusted VPN peers. Tailscale input and trigger feedback have passed live
@@ -108,7 +108,7 @@ opening the OS on-screen keyboard are still planned.
 
 From version 0.5.1, both roles check GitHub's latest stable release on startup.
 Open **Update available**, download it, then choose **Install and restart**.
-**Settings → Updates** checks manually; automatic checks can be disabled.
+**Settings → App updates → Check** checks manually; automatic checks can be disabled.
 Installation disconnects the controller, keeps settings/pairings and reopens the
 app. Normal administrator authorization may be required.
 
@@ -128,7 +128,7 @@ published SHA-256 digest before installation.
 | Problem | What to check |
 | --- | --- |
 | No Server found | Enter its LAN/VPN address manually. Check that the Server is running, network permissions are allowed and VPN policies permit communication. |
-| Connection refused on Windows | Use **Settings → Repair Windows setup** and accept the administrator prompt. |
+| Connection refused on Windows | Use **Settings → Windows setup → Repair** and accept the administrator prompt. |
 | Controller unavailable | Press PS and confirm Bluetooth is connected. Close other software using the physical controller, particularly Steam on the Client. |
 | Duplicate input | Disable the streaming app's controller forwarding. |
 | Audio stalls | Disconnect and disable **Controller audio** to isolate input. Continuous audio remains preview functionality. |
