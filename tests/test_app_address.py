@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from dualsensedriver.app import Window
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
@@ -21,8 +22,6 @@ from PySide6.QtWidgets import (
     QStyle,
     QStyleOptionButton,
 )
-
-from dualsensedriver.app import Window
 
 
 class DesktopTests(unittest.TestCase):
@@ -91,8 +90,8 @@ class DesktopTests(unittest.TestCase):
         window = self.window
         window.current_role = "game"
         window._show_pair_page()
-        self.assertEqual(window.pair_addresses.textFormat(), Qt.TextFormat.RichText)
-        window.pair_addresses.linkActivated.emit("100.97.43.25")
+        self.assertEqual(window.addresses.textFormat(), Qt.TextFormat.RichText)
+        window.addresses.linkActivated.emit("100.97.43.25")
         self.assertEqual(self.application.clipboard().text(), "100.97.43.25")
         window.addresses.linkActivated.emit("192.168.1.190")
         self.assertEqual(self.application.clipboard().text(), "192.168.1.190")
@@ -192,8 +191,12 @@ class DesktopTests(unittest.TestCase):
             window.current_role = role
             window._show_role()
             # Select screens without issuing network or pairing operations.
-            for page in (window.connection_page, window.pair_page):
-                window.server_pair.setVisible(role == "game")
+            pages = (
+                (window.connection_page,)
+                if role == "game"
+                else (window.connection_page, window.pair_page)
+            )
+            for page in pages:
                 window.client_pair.setVisible(role == "controller")
                 window.pages.setCurrentWidget(page)
                 window._fit_page()
@@ -212,6 +215,7 @@ class DesktopTests(unittest.TestCase):
                         )
                 if page is window.pair_page and role == "controller":
                     window.pair_error.setText("Server is unreachable. Check network permissions.")
+                    window._fit_page()
                     self.application.processEvents()
                     choices_bottom = window.manual_address.mapTo(
                         page, window.manual_address.rect().bottomLeft()
@@ -221,7 +225,6 @@ class DesktopTests(unittest.TestCase):
 
     def test_pairing_code_never_enters_logs(self):
         self.window.on_event("pair_code", "1234")
-        self.assertEqual(self.window.pin.text(), "1234")
         self.assertEqual(self.window.inline_pin.text(), "1234")
         if self.window.current_role == "game":
             self.assertIs(self.window.pages.currentWidget(), self.window.connection_page)
@@ -230,10 +233,10 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(self.window.inline_refresh.width(), 36)
         self.assertEqual(self.application.clipboard().text(), "1234")
         self.application.clipboard().setText("other")
-        self.window.copy_code.click()
+        self.window.inline_copy.click()
         self.assertEqual(self.application.clipboard().text(), "1234")
         self.window.on_event("pair_code", "")
-        self.assertFalse(self.window.copy_code.isEnabled())
+        self.assertFalse(self.window.inline_copy.isEnabled())
         self.assertNotIn("1234", self.window.details.toPlainText())
 
     def test_pairing_timeout_stays_visible_and_reenables_retry(self):
@@ -273,6 +276,33 @@ class DesktopTests(unittest.TestCase):
             self.assertEqual(window.status.property("tone"), "danger")
         finally:
             window.engine.connection = None
+
+    def test_stopped_server_is_neutral_and_hides_inactive_pairing(self):
+        window = self.window
+        window.current_role = "game"
+        window.preferences["game_credentials"] = "fixture"
+        window._show_role()
+        window.on_event("pair_code", "1234")
+        self.assertFalse(window.inline_pairing.isHidden())
+        window.on_event("stopped", "")
+        self.assertEqual(window.status.text(), "Server stopped")
+        self.assertEqual(window.status.property("tone"), "neutral")
+        self.assertEqual(window.connect_button.text(), "Start server")
+        self.assertTrue(window.inline_pairing.isHidden())
+
+    def test_waiting_server_has_stop_action_and_code_on_the_same_page(self):
+        window = self.window
+        window.current_role = "game"
+        window.engine.pairing = object()
+        try:
+            window.on_event("waiting", "")
+            window.on_event("pair_code", "1234")
+            self.assertEqual(window.connect_button.text(), "Stop server")
+            self.assertEqual(window.connect_button.property("intent"), "danger")
+            self.assertIs(window.pages.currentWidget(), window.connection_page)
+            self.assertFalse(window.inline_pairing.isHidden())
+        finally:
+            window.engine.pairing = None
 
     def test_connected_audio_click_is_read_only_and_explains_why(self):
         window = self.window

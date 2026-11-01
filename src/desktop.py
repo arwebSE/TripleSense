@@ -182,8 +182,8 @@ class Window(QMainWindow):
         if sys.platform == "darwin":
             self.current_role = "controller"
         self.setWindowTitle("TripleSense")
-        self.resize(640, 410)
-        self.setMinimumWidth(600)
+        self.resize(600, 380)
+        self.setMinimumWidth(560)
         self._build()
         self.tooltip_filter = DisabledTooltips(self)
         QApplication.instance().installEventFilter(self.tooltip_filter)
@@ -302,7 +302,8 @@ class Window(QMainWindow):
                           border-radius: 7px; padding: 0px 14px; }
             QPushButton:hover { background: #2a2d32; }
             QPushButton:disabled { color: #686d76; border-color: #26292e; }
-            QPushButton#mode { background: transparent; color: #a1a5ad; }
+            QPushButton#mode { background: #15171a; color: #f0f1f3; text-align: left;
+                               padding: 12px 16px; }
             QPushButton#mode:checked { background: #171f29; color: #a5d3ff;
                                       border-color: #0a84ff; }
             QPushButton#primary { background: #0a84ff; color: #ffffff;
@@ -333,18 +334,16 @@ class Window(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
         heading = QHBoxLayout()
-        heading.addWidget(label("Choose a mode", "heading"), 1)
+        heading.addWidget(label("Set up this computer", "heading"), 1)
         heading.addWidget(button("Back", self._back))
         layout.addLayout(heading)
-        layout.addWidget(
-            label("Changing mode disconnects the current controller session.", "muted", wrap=True)
-        )
+        layout.addWidget(label("Choose what this computer will do.", "muted", wrap=True))
         self.server = button(
-            "Server\nMakes a DualSense available on this computer",
+            "Server · Games run here\nReceive a controller from another computer",
             lambda: self._role_changed("game"),
         )
         self.client = button(
-            "Client\nThe DualSense connects to this computer",
+            "Client · Controller is here\nSend your DualSense to the gaming computer",
             lambda: self._role_changed("controller"),
         )
         self.server.setAutoExclusive(True)
@@ -354,8 +353,6 @@ class Window(QMainWindow):
             choice.setObjectName("mode")
             choice.setMinimumHeight(68)
             layout.addWidget(choice)
-        if sys.platform == "darwin":
-            self.server.setText("Server\nRequires Apple's virtual HID entitlement")
         layout.addStretch(1)
         return page
 
@@ -394,6 +391,7 @@ class Window(QMainWindow):
         pairing_layout.setContentsMargins(0, 8, 0, 0)
         pairing_layout.setSpacing(8)
         caption = label("Pairing code")
+        caption.setToolTip("Enter this code in the Client app to pair a new computer")
         caption.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         pairing_layout.addWidget(caption)
         self.inline_pin = label("—", "heading")
@@ -442,9 +440,7 @@ class Window(QMainWindow):
         self.audio_status.hide()
         layout.addWidget(self.audio_box)
         actions = QHBoxLayout()
-        self.pair_button = button("Pair client", self._open_pairing)
         self.connect_button = button("Connect", self._toggle, primary=True)
-        actions.addWidget(self.pair_button)
         actions.addStretch(1)
         actions.addWidget(self.connect_button)
         layout.addLayout(actions)
@@ -464,32 +460,6 @@ class Window(QMainWindow):
         layout.addLayout(row)
         self.pair_instructions = label("", "muted", wrap=True)
         layout.addWidget(self.pair_instructions)
-        self.server_pair = QWidget()
-        server = QVBoxLayout(self.server_pair)
-        server.setContentsMargins(0, 4, 0, 4)
-        server.setSpacing(14)
-        self.pair_addresses = label("", "muted", wrap=True)
-        self._enable_address_copy(self.pair_addresses)
-        server.addWidget(self.pair_addresses)
-        self.pin = label("", "code")
-        self.pin.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.pin.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        server.addStretch(1)
-        server.addWidget(self.pin)
-        self.pin_hint = label("Creating a pairing code…", "muted", wrap=True)
-        self.pin_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        server.addWidget(self.pin_hint)
-        server.addStretch(1)
-        self.generate = button("New code", self._generate_code)
-        code_actions = QHBoxLayout()
-        code_actions.addStretch(1)
-        code_actions.addWidget(self.generate)
-        self.copy_code = button("Copy code", self._copy_code, primary=True)
-        self.copy_code.setEnabled(False)
-        code_actions.addWidget(self.copy_code)
-        code_actions.addStretch(1)
-        server.addLayout(code_actions)
-        layout.addWidget(self.server_pair, 1)
         self.client_pair = QWidget()
         client = QVBoxLayout(self.client_pair)
         client.setContentsMargins(0, 0, 0, 0)
@@ -620,20 +590,20 @@ class Window(QMainWindow):
             self.server.setChecked(server)
             self.client.setChecked(not server)
         self.role_caption.setText(
-            "SERVER · Computer receiving the controller"
+            "SERVER · Games run on this computer"
             if server
-            else "CLIENT · Computer connected to your DualSense"
+            else "CLIENT · Your DualSense is connected here"
         )
         self.audio_box.setVisible(not server)
         self.auto.setVisible(not server)
         self.mouse.setVisible(server)
         self.repair_button.setVisible(server and sys.platform == "win32")
         self.setup_note.setVisible(server and sys.platform == "win32")
-        self.peer_label.setText("PAIRED CLIENT" if server else "PAIRED SERVER")
+        self.peer_label.setText("Saved client" if server else "Saved server")
         for widget in (self.peer_gap, self.peer_label, self.peer_name, self.addresses):
             widget.setVisible(server)
         self.saved_box.setVisible(not server)
-        self.inline_pairing.setVisible(server)
+        self.inline_pairing.setVisible(server and not self.connected and bool(self.engine.pairing))
         self._refresh_saved_servers()
         self._update_peer()
         self._update_actions()
@@ -655,14 +625,17 @@ class Window(QMainWindow):
         self.centralWidget().layout().activate()
         pairing = self.pages.currentWidget() is getattr(self, "pair_page", None)
         mode_selection = self.pages.currentWidget() is getattr(self, "mode_page", None)
-        height = (
-            450
-            if mode_selection
-            else (460 if pairing else (500 if self.current_role == "controller" else 404))
-        )
+        self.role_caption.setVisible(not mode_selection)
+        self.mode_button.setVisible(sys.platform != "darwin" and not mode_selection)
+        if mode_selection:
+            height = 320
+        elif pairing:
+            height = 520 if self.hosts.count() else 400
+        else:
+            height = 380 if self.current_role == "controller" else 340
         self.setMinimumHeight(height)
         self.resize(
-            max(640, self.minimumSizeHint().width()),
+            max(600, self.minimumSizeHint().width()),
             max(height, self.minimumSizeHint().height() + 8),
         )
 
@@ -687,7 +660,12 @@ class Window(QMainWindow):
             if server
             else self.preferences.get("controller_profile")
         )
-        self.connect_button.setText("Disconnect" if active else "Connect")
+        self.connect_button.setText(
+            ("Stop server" if active else "Start server")
+            if server
+            else ("Disconnect" if active else "Connect")
+        )
+        self.inline_pairing.setVisible(server and active and not self.connected)
         if self.starting_connection:
             self.connect_button.setText("Cancel")
         if not paired and not server:
@@ -697,12 +675,8 @@ class Window(QMainWindow):
             "danger" if active or self.starting_connection else "positive",
             "intent",
         )
-        self.pair_button.setText("Pair another client")
-        self.pair_button.setVisible(False)
         for control in (
             self.connect_button,
-            self.pair_button,
-            self.generate,
             self.pair_submit,
             self.pair_back,
         ):
@@ -710,15 +684,11 @@ class Window(QMainWindow):
         if self.starting_connection:
             self.connect_button.setEnabled(True)
         self.pair_submit.setText("Connecting…" if self.pairing_client else "Connect")
-        self.pair_button.setEnabled(not self.busy and not self.connected)
         self.inline_refresh.setEnabled(not self.busy and not self.connected)
         self.inline_refresh.setToolTip(
-            "Disconnect before generating a pairing code"
+            "Stop the server before changing pairing"
             if self.connected
             else "Generate a new pairing code"
-        )
-        self.pair_button.setToolTip(
-            "Disconnect before pairing another client" if self.connected else ""
         )
         for control in (self.saved_list, self.add_server, self.remove_server):
             control.setEnabled(not self.busy and not self.engine.connection)
@@ -773,24 +743,14 @@ class Window(QMainWindow):
         self._perform(self.engine.set_role(role))
 
     def _show_pair_page(self):
-        server = self.current_role == "game"
-        self.pair_heading.setText("Connect a client" if server else "Add a server")
+        if self.current_role == "game":
+            self.pages.setCurrentWidget(self.connection_page)
+            return
+        self.pair_heading.setText("Add a server")
         self.pair_instructions.setText(
-            "Enter this code in the Client app on your controller computer."
-            if server
-            else "Choose a server or enter its address, then enter the code from its Server app."
+            "Choose your gaming computer, then enter the code shown in its Server app."
         )
-        self.server_pair.setVisible(server)
-        self.client_pair.setVisible(not server)
-        self.pair_back.setVisible(
-            bool(
-                self.preferences.get("game_credentials")
-                if server
-                else self.preferences.get("controller_profile")
-            )
-        )
-        if server:
-            self.pair_addresses.setText(self._server_address_links())
+        self.pair_back.setVisible(bool(self.preferences.get("controller_profile")))
         self.pages.setCurrentWidget(self.pair_page)
         self._sync_discovery()
         self._fit_page()
@@ -846,17 +806,11 @@ class Window(QMainWindow):
             self.engine.submit(self.engine.rescan())
 
     def _back(self):
-        server_pairing = (
-            self.current_role == "game" and self.pages.currentWidget() is self.pair_page
-        )
         self.pages.setCurrentWidget(self.connection_page)
-        if server_pairing and self.engine.pairing:
-            self._perform(self.engine.cancel_pairing())
 
     def _generate_code(self):
-        self.pin.setText("••••")
-        self.copy_code.setEnabled(False)
-        self.pin_hint.setText("Creating a pairing code…")
+        self.inline_pin.setText("…")
+        self.inline_copy.setEnabled(False)
         self._perform(self.engine.begin_pairing())
 
     def _choose_discovered(self, item):
@@ -893,6 +847,7 @@ class Window(QMainWindow):
                 pc["address"] == selected_pc.get("address") or len(by_address) == 1
             ):
                 self.hosts.setCurrentItem(item)
+        self.hosts.setFixedHeight(55 * max(1, min(3, self.hosts.count())) + 12)
         self.hosts.setVisible(bool(self.hosts.count()))
         self.hosts_heading.setVisible(bool(self.hosts.count()))
         self.discovery_hint.setVisible(not self.hosts.count())
@@ -970,8 +925,9 @@ class Window(QMainWindow):
             self.starting_connection = False
             if self.action:
                 self.action.cancel()
-            self.status.setText("Disconnected")
-            self.description.setText("Connection cancelled.")
+            self.status.setText("Connection cancelled")
+            self.description.setText("You can try again or choose another server.")
+            self._tone(self.status, "neutral")
             self._update_actions()
             return
         if self.current_role == "game":
@@ -1126,20 +1082,13 @@ class Window(QMainWindow):
         if kind in ("pair_code", "pair_code_rotated"):
             if self.current_role == "game":
                 self.pages.setCurrentWidget(self.connection_page)
-            self.pin.setText(value if value else "Code expired")
-            self.inline_pin.setText(value if value else "Expired")
-            self.inline_pin.setToolTip("Valid for 2 minutes" if value else "Generate a new code")
+            self.inline_pin.setText(value or "…")
+            self.inline_pin.setToolTip("Valid for 2 minutes" if value else "Creating a new code…")
             self.inline_copy.setEnabled(bool(value))
-            self.copy_code.setEnabled(bool(value))
+            self.inline_pairing.setVisible(self.current_role == "game" and not self.connected)
             if value and kind == "pair_code":
                 self._copy_code()
-            self.pin_hint.setText(
-                "Copied to clipboard. Valid for 2 minutes."
-                if value
-                else "Generate a new code to continue pairing."
-            )
-            self.generate.setText("New code")
-            self._tone(self.pin, "info" if value else "danger")
+            self._fit_page()
             return  # Pairing codes are never written to logs.
         if kind == "audio_status":
             stalled = "stall" in str(value)
@@ -1177,7 +1126,6 @@ class Window(QMainWindow):
             self.status.setText("Server setup needed")
             self.description.setText("Open Settings → Repair Windows setup to install the driver.")
         elif kind == "paired":
-            self.pin.clear()
             self.code.clear()
             self.pages.setCurrentWidget(self.connection_page)
             self._show_role()
@@ -1186,7 +1134,11 @@ class Window(QMainWindow):
         elif kind == "connected":
             self.connected = True
             self.status.setText("Connected")
-            self.description.setText("Your DualSense is available to games on the Server.")
+            self.description.setText(
+                "Your DualSense is ready for games on this computer."
+                if self.current_role == "game"
+                else "Your DualSense is connected to the gaming computer."
+            )
             self.inline_pairing.setVisible(False)
         elif kind == "available":
             self.status.setText("Starting controller…")
@@ -1210,11 +1162,11 @@ class Window(QMainWindow):
             self.connected = False
             self.inline_pairing.setVisible(self.current_role == "game")
             paired = bool(self.preferences.get("game_credentials"))
-            self.status.setText("Waiting for client" if paired else "Pair your client")
+            self.status.setText("Ready for a client" if paired else "Ready to pair")
             self.description.setText(
                 "Open TripleSense on the computer connected to your DualSense."
                 if paired
-                else "Pair once, then reconnect automatically."
+                else "On your controller computer, add this server and enter the code below."
             )
         elif kind == "stopped":
             self.connected = False
@@ -1225,17 +1177,14 @@ class Window(QMainWindow):
                 if self.current_role == "game"
                 else self.preferences.get("controller_profile")
             )
-            self.status.setText(
-                "Disconnected"
-                if paired
-                else "Pair your client"
-                if self.current_role == "game"
-                else "Pair your server"
-            )
+            server = self.current_role == "game"
+            self.status.setText("Server stopped" if server else "Ready to connect")
             self.description.setText(
-                "The controller connection is stopped."
+                "Start the server to connect your controller computer."
+                if server
+                else "Choose a saved server, then connect your DualSense."
                 if paired
-                else "Pair once, then reconnect automatically."
+                else "Add your gaming computer to get started."
             )
         elif kind == "discovery_unavailable":
             self.pair_error.setText("Discovery is unavailable. Enter a Server address instead.")
@@ -1243,22 +1192,23 @@ class Window(QMainWindow):
             self.audio_status.hide()
         tone = (
             "danger"
-            if kind in ("error", "controller_waiting", "stopped", "reconnecting")
+            if kind in ("error", "reconnecting")
             else "success"
             if kind in ("connected", "paired")
             else "warning"
             if kind == "driver_needed"
             else "info"
         )
-        if kind == "stopped" and not paired:
-            tone = "info"
+        if kind in ("stopped", "controller_waiting"):
+            tone = "neutral"
         self._tone(self.status, tone)
         self._update_peer()
         self._update_actions()
+        self._fit_page()
 
     def _copy_code(self):
-        if self.copy_code.isEnabled():
-            QApplication.clipboard().setText(self.pin.text())
+        if self.inline_copy.isEnabled():
+            QApplication.clipboard().setText(self.inline_pin.text())
 
     def closeEvent(self, event):
         if self.quitting:

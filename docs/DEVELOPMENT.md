@@ -105,7 +105,8 @@ license files are bundled. `Build desktop app` is the CI packaging workflow.
 
 ## Releases and updates
 
-Update the application version, project metadata and Windows installer together.
+Update `src/__init__.py` for the release version; package metadata and the Windows
+installer both derive their version from it.
 Build/test packages, publish matching assets and `SHA256SUMS.txt` to GitHub, and
 record experimental limitations in the release notes. The updater selects the
 matching OS/architecture asset and verifies GitHub's SHA-256/size before staging.

@@ -42,7 +42,7 @@ def require_controller_isolation() -> None:
         raise RuntimeError(
             "Steam is running on the physical-controller PC. Exit Steam there before starting "
             "the bridge: its raw-controller mappings can trigger desktop shortcuts during audio. "
-            "Steam may run normally on a separate Sunshine host."
+            "Steam may run normally on a separate gaming PC."
         )
 
 
@@ -85,7 +85,7 @@ def choose_controller(serial: str | None, *, allow_remembered=False):
     if len(candidates) != 1:
         raise RuntimeError(
             f"Expected one Bluetooth DualSense; found {len(candidates)}. "
-            "Turn it on, run 'ds5driver devices', and select it with --serial."
+            "Turn it on, run 'triplesense devices', and select it with --serial."
         )
     return candidates[0]
 

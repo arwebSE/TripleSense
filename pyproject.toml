@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "TripleSense"
-version = "0.5.1"
+dynamic = ["version"]
 description = "Share a DualSense controller between computers, including audio and microphone"
 requires-python = ">=3.11"
 license = "MIT"
@@ -35,6 +35,9 @@ dsshine-app = "dualsensedriver.app:main"
 
 [tool.setuptools]
 packages = ["dualsensedriver", "ds5emu", "ds5bridge"]
+
+[tool.setuptools.dynamic]
+version = {attr = "dualsensedriver.__version__"}
 
 [tool.setuptools.package-data]
 dualsensedriver = ["assets/*"]

@@ -259,6 +259,7 @@ def main():
                 compiler,
                 "/DBundleDir=" + str(ROOT / "dist" / "TripleSense"),
                 "/DProjectRoot=" + str(ROOT),
+                "/DAppVersion=" + __version__,
                 str(ROOT / "packaging" / "windows.iss"),
             ],
             check=True,
