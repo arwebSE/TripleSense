@@ -19,15 +19,10 @@ from pathlib import Path
 
 REPOSITORY = "arwebSE/TripleSense"
 API = f"https://api.github.com/repos/{REPOSITORY}"
-SERVICE = "TripleSense GitHub updates"
 MAX_DOWNLOAD = 512 * 1024 * 1024
 
 
 class UpdateError(RuntimeError):
-    pass
-
-
-class GitHubAccessRequired(UpdateError):
     pass
 
 
@@ -38,38 +33,14 @@ def version_tuple(value):
     return tuple(map(int, match.groups()))
 
 
-def github_token():
-    import keyring
-
-    return keyring.get_password(SERVICE, REPOSITORY)
-
-
-def save_github_token(token):
-    import keyring
-
-    if token:
-        keyring.set_password(SERVICE, REPOSITORY, token.strip())
-    else:
-        try:
-            keyring.delete_password(SERVICE, REPOSITORY)
-        except keyring.errors.PasswordDeleteError:
-            pass
-
-
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, request, fp, code, message, headers, url):
         if urllib.parse.urlsplit(url).scheme != "https":
             raise UpdateError("The update server redirected to an insecure address.")
-        result = super().redirect_request(request, fp, code, message, headers, url)
-        if (
-            result
-            and urllib.parse.urlsplit(url).netloc != urllib.parse.urlsplit(request.full_url).netloc
-        ):
-            result.remove_header("Authorization")
-        return result
+        return super().redirect_request(request, fp, code, message, headers, url)
 
 
-def open_github(url, token=None, *, binary=False):
+def open_github(url, *, binary=False):
     if not url.startswith(API + "/"):
         raise UpdateError("The release asset does not belong to this project.")
     headers = {
@@ -77,19 +48,12 @@ def open_github(url, token=None, *, binary=False):
         "Accept": "application/octet-stream" if binary else "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
-    if token:
-        if not re.fullmatch(r"[A-Za-z0-9_]{10,512}", token):
-            raise UpdateError("The GitHub token has an invalid format. Check it and try again.")
-        headers["Authorization"] = "Bearer " + token
     request = urllib.request.Request(url, headers=headers)
     try:
         return urllib.request.build_opener(SafeRedirect()).open(request, timeout=30)
     except urllib.error.HTTPError as exc:
         if exc.code in (401, 404):
-            raise GitHubAccessRequired(
-                "GitHub releases are unavailable. This repository may be private. "
-                "Add GitHub access to check private releases."
-            ) from None
+            raise UpdateError("No public release is available. Try again later.") from None
         if exc.code == 403:
             raise UpdateError(
                 "GitHub denied the request or its request limit was reached. Try later."
@@ -144,22 +108,22 @@ def select_release(data, current, *, system=None, machine=None):
     raise UpdateError("The new release is not packaged for this computer yet. Try again later.")
 
 
-def check_release(current, token=None):
-    with open_github(API + "/releases/latest", token) as response:
+def check_release(current):
+    with open_github(API + "/releases/latest") as response:
         body = response.read(2 * 1024 * 1024 + 1)
     if len(body) > 2 * 1024 * 1024:
         raise UpdateError("GitHub returned an oversized release description.")
     return select_release(json.loads(body), current)
 
 
-def download_release(release, directory, token=None, progress=lambda *_: None):
+def download_release(release, directory, progress=lambda *_: None):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     destination = directory / release.name
     partial = destination.with_suffix(destination.suffix + ".partial")
     digest, total = hashlib.sha256(), 0
     try:
-        with open_github(release.url, token, binary=True) as response, partial.open("wb") as stream:
+        with open_github(release.url, binary=True) as response, partial.open("wb") as stream:
             while block := response.read(256 * 1024):
                 total += len(block)
                 if total > release.size:

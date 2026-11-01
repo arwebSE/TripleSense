@@ -43,14 +43,9 @@ def notices():
         "PySide6-Essentials",
         "shiboken6",
         "pyinstaller",
-        "keyring",
-        "jaraco.classes",
-        "jaraco.context",
-        "jaraco.functools",
-        "more-itertools",
     ]
     if sys.platform == "linux":
-        names.extend(["evdev", "SecretStorage", "jeepney"])
+        names.append("evdev")
     for name in names:
         distribution = importlib.metadata.distribution(name)
         folder = destination / name

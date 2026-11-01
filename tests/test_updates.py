@@ -3,7 +3,6 @@ import io
 import plistlib
 import tempfile
 import unittest
-import urllib.request
 from pathlib import Path
 from unittest.mock import patch
 
@@ -83,28 +82,15 @@ class UpdateTests(unittest.TestCase):
                             U.download_release(release, folder)
                         self.assertEqual(list(Path(folder).iterdir()), [])
 
-    def test_redirect_never_leaks_github_token(self):
-        request = urllib.request.Request(
-            U.API + "/releases/assets/42", headers={"Authorization": "Bearer secret"}
-        )
-        result = U.SafeRedirect().redirect_request(
-            request, None, 302, "Found", {}, "https://release-assets.githubusercontent.com/file"
-        )
-        self.assertFalse(result.has_header("Authorization"))
-        with self.assertRaises(U.UpdateError):
-            U.SafeRedirect().redirect_request(
-                request, None, 302, "Found", {}, "http://example.com/file"
-            )
-
     def test_source_checkout_cannot_launch_installer(self):
         with patch.object(U.sys, "frozen", False, create=True), self.assertRaises(U.UpdateError):
             U.launch_installer(Path("installer.exe"), Path("."))
 
-    def test_invalid_token_is_rejected_without_disclosing_its_value(self):
-        token = "private-token\nInjectedHeader"
-        with self.assertRaises(U.UpdateError) as raised:
-            U.open_github(U.API + "/releases/latest", token)
-        self.assertNotIn(token, str(raised.exception))
+    def test_release_requests_do_not_send_authentication(self):
+        with patch.object(U.urllib.request, "build_opener") as build:
+            U.open_github(U.API + "/releases/latest")
+        request = build.return_value.open.call_args.args[0]
+        self.assertFalse(request.has_header("Authorization"))
 
     def test_macos_wrong_bundle_is_rejected_and_disk_image_is_detached(self):
         with tempfile.TemporaryDirectory() as temporary:

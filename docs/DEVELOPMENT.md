@@ -109,8 +109,7 @@ installer both derive their version from it.
 Build/test packages, publish matching assets and `SHA256SUMS.txt` to GitHub, and
 record experimental limitations in the release notes. The updater selects the
 matching OS/architecture asset and verifies GitHub's SHA-256/size before staging.
-Installation waits for safe app shutdown, then installs and relaunches. Private
-release access uses the OS credential store; never embed a maintainer token.
+Installation waits for safe app shutdown, then installs and relaunches. Only publicly accessible releases are supported; the app has no login or token flow.
 
 Source distributions must retain the native Mac source, Linux helper/container,
 installer templates, license notices and inherited test fixtures. Keep

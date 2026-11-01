@@ -116,12 +116,9 @@ Versions before 0.5.1 need one manual update: quit the app and run the Windows
 installer or replace the Mac app. Linux updates use the system package installer.
 Updates do not automatically install prereleases or downgrade development builds.
 
-While the repository is private, downloads need GitHub access. In Updates, open
-**GitHub access** and supply a fine-grained token with read-only Contents access
-to `arwebSE/TripleSense`. It is stored in the OS credential store, not in settings
-or bundled with the app. Leave the field empty and save to remove access.
-Public releases need no GitHub account. Downloads must match the release asset's
-published SHA-256 digest before installation.
+In-app updates use publicly accessible GitHub releases without a login.
+Private-repository releases cannot be checked or downloaded in the app.
+Downloads must match the release asset's published SHA-256 digest before installation.
 
 ## Troubleshooting
 
@@ -134,7 +131,7 @@ published SHA-256 digest before installation.
 | Audio stalls | Disconnect and disable **Controller audio** to isolate input. Continuous audio remains preview functionality. |
 | Saved pairing rejected | Disconnect and pair that Server again. An expired display code alone does not invalidate saved pairing. |
 | Game misses a recreated controller | Restart the game after reconnecting. |
-| Update fails | Check repository access and OS authorization. The helper attempts to reopen the installed app; details are in `update-install.log`. |
+| Update fails | Check internet access, release availability and OS authorization. The helper attempts to reopen the installed app; details are in `update-install.log`. |
 
 Open **Logs** for connection diagnostics. Logs do not contain microphone recordings.
 Private app data is stored in `%LOCALAPPDATA%/TripleSense` on Windows,

@@ -6,14 +6,11 @@ import sys
 import threading
 from pathlib import Path
 
-from PySide6.QtCore import QUrl, Signal
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QDialog,
-    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QProgressBar,
     QPushButton,
     QVBoxLayout,
@@ -42,9 +39,6 @@ class UpdateDialog(QDialog):
         self.bar.hide()
         layout.addWidget(self.bar)
         row = QHBoxLayout()
-        self.access = QPushButton("GitHub access")
-        self.access.clicked.connect(self._access)
-        row.addWidget(self.access)
         row.addStretch()
         self.action = QPushButton("Check for updates")
         self.action.setObjectName("primary")
@@ -54,19 +48,11 @@ class UpdateDialog(QDialog):
         self.completed.connect(self._completed)
         self.progress.connect(self._progress)
 
-    def _token(self):
-        return (
-            updates.github_token()
-            if self.window.preferences.get("updates_private_access")
-            else None
-        )
-
     def _run(self, operation, work):
         if self.working:
             return
         self.working = True
         self.action.setEnabled(False)
-        self.access.setEnabled(False)
 
         def run():
             try:
@@ -82,7 +68,7 @@ class UpdateDialog(QDialog):
         if self.working:
             return
         self.status.setText("Checking GitHub for updates…")
-        self._run("check", lambda: updates.check_release(__version__, self._token()))
+        self._run("check", lambda: updates.check_release(__version__))
 
     def _action(self):
         if self.package:
@@ -99,8 +85,7 @@ class UpdateDialog(QDialog):
                 package = updates.download_release(
                     self.release,
                     folder,
-                    self._token(),
-                    self.progress.emit,
+                    progress=self.progress.emit,
                 )
                 stage = (
                     updates.stage_macos(package, self.release.version)
@@ -116,7 +101,6 @@ class UpdateDialog(QDialog):
     def _completed(self, operation, result):
         self.working = False
         self.action.setEnabled(True)
-        self.access.setEnabled(True)
         if operation == "error":
             self.status.setText(str(result))
             self.bar.hide()
@@ -146,57 +130,6 @@ class UpdateDialog(QDialog):
                 self.action.setToolTip(
                     "Install and restart is available in the packaged application."
                 )
-        elif operation == "access":
-            self._completed_access(result)
 
     def _progress(self, received, total):
         self.bar.setValue(received * 100 // total)
-
-    def _access(self):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("GitHub access")
-        dialog.setFixedWidth(440)
-        layout = QVBoxLayout(dialog)
-        note = QLabel(
-            "Public releases need no login. For private releases, use a fine-grained "
-            "GitHub token with read-only Contents access to arwebSE/TripleSense. "
-            "It is saved in your system keychain. Leave empty to remove saved access."
-        )
-        note.setWordWrap(True)
-        layout.addWidget(note)
-        token_input = QLineEdit()
-        token_input.setEchoMode(QLineEdit.EchoMode.Password)
-        token_input.setPlaceholderText("GitHub access token")
-        layout.addWidget(token_input)
-        create = QPushButton("Create a token on GitHub")
-        create.clicked.connect(
-            lambda: QDesktopServices.openUrl(
-                QUrl("https://github.com/settings/personal-access-tokens/new")
-            )
-        )
-        layout.addWidget(create)
-        actions = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
-        )
-        actions.accepted.connect(dialog.accept)
-        actions.rejected.connect(dialog.reject)
-        layout.addWidget(actions)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
-        token = token_input.text().strip()
-
-        def save():
-            if token:
-                with updates.open_github(updates.API + "/releases/latest", token) as response:
-                    response.read(1)
-            updates.save_github_token(token)
-            return bool(token.strip())
-
-        self._run("access", save)
-
-    def _completed_access(self, enabled):
-        self.window.preferences["updates_private_access"] = enabled
-        self.window.engine.submit(
-            self.window.engine.update_preferences("updates_private_access", enabled)
-        )
-        self.check()
