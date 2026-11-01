@@ -4,11 +4,11 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
-from dualsensedriver.app import AppEngine
-from dualsensedriver.lan import MAGIC, LanDiscovery
-from dualsensedriver.setup import repair_windows
+from triplesense.app import AppEngine
+from triplesense.lan import MAGIC, LanDiscovery
+from triplesense.setup import repair_windows
 
 
 class LanTests(unittest.TestCase):
@@ -85,11 +85,11 @@ class LanTests(unittest.TestCase):
             original = "controller = enabled\nfps = 60\n"
             config.write_text(original)
             with (
-                patch("dualsensedriver.setup.sys.platform", "win32"),
-                patch("dualsensedriver.setup.sys.frozen", True, create=True),
-                patch("dualsensedriver.setup.ctypes", MagicMock()),
-                patch("dualsensedriver.setup.find_usbip", return_value="usbip.exe"),
-                patch("dualsensedriver.setup.subprocess.run") as run,
+                patch("triplesense.setup.sys.platform", "win32"),
+                patch("triplesense.setup.sys.frozen", True, create=True),
+                patch("triplesense.setup.ctypes", MagicMock()),
+                patch("triplesense.setup.find_usbip", return_value="usbip.exe"),
+                patch("triplesense.setup.subprocess.run") as run,
                 patch.dict("os.environ", {"ProgramFiles": temporary, "SystemRoot": temporary}),
             ):
                 repair_windows()
@@ -133,18 +133,9 @@ class RoamingTests(unittest.IsolatedAsyncioTestCase):
         await self.engine.discovered({"host_id": "paired-id", "address": "192.168.1.190"})
         self.assertEqual(profile["address"], "100.97.43.25")
 
-    async def test_legacy_pair_does_not_adopt_id_when_tls_verification_fails(self):
+    async def test_discovery_does_not_enroll_a_profile_without_a_paired_identity(self):
         self.engine.preferences["controller_profile"].pop("host_id")
-        self.engine.preferences["controller_profile"]["port"] = 3250
-        with (
-            patch("dualsensedriver.credentials.tls_context", return_value=None),
-            patch(
-                "asyncio.open_connection",
-                new_callable=AsyncMock,
-                side_effect=OSError("certificate mismatch"),
-            ),
-        ):
-            await self.engine.discovered(
-                {"host_id": "spoofed-id", "address": "192.168.1.10", "dsshine": True}
-            )
+        await self.engine.discovered(
+            {"host_id": "unpaired-id", "address": "192.168.1.10", "triplesense": True}
+        )
         self.assertNotIn("host_id", self.engine.preferences["controller_profile"])

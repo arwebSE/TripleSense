@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/assets/dsshine.png" width="88" alt="TripleSense icon">
+  <img src="src/assets/triplesense.png" width="88" alt="TripleSense icon">
 </p>
 
 <h1 align="center">TripleSense</h1>
@@ -149,8 +149,6 @@ usbip-win2. Its focus is a standalone, paired controller connection between
 computers, with discovery, saved servers and desktop apps. See
 [upstream credits and comparison](docs/UPSTREAM.md) and
 [third-party notices](THIRD_PARTY_NOTICES.md).
-
-Previously called **DSShine**. Renaming or updating keeps existing pairings.
 
 Want to contribute? Start with the [development guide](docs/DEVELOPMENT.md) and
 [compatibility and roadmap](docs/STATUS.md).

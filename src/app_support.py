@@ -12,7 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-SERVICE = "_dsshine._tcp.local."
+SERVICE = "_triplesense._tcp.local."
 DRIVER_HASH = "38cad6d4432b52d5bb9409d9ad03b72fdffc4ada4cd3a48fbeca1a2752a8518a"
 
 
@@ -23,8 +23,7 @@ def app_directory():
         root = Path.home() / "Library" / "Application Support"
     else:
         root = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
-    # Keep the existing private data directory so renaming preserves pairings.
-    folder = root / "DSShine"
+    folder = root / "TripleSense"
     folder.mkdir(parents=True, exist_ok=True, mode=0o700)
     return folder
 
@@ -107,7 +106,7 @@ class Discovery:
         info = zeroconf.get_service_info(service_type, name, timeout=1500)
         if info:
             identity = info.properties.get(b"id", b"").decode("ascii", errors="ignore")
-            identifier = "dsshine:" + identity if identity else name
+            identifier = "triplesense:" + identity if identity else name
             self.service_ids[name] = identifier
             for address in info.parsed_addresses():
                 if ipaddress.ip_address(address).version == 4:
@@ -118,7 +117,7 @@ class Discovery:
                             "host_id": identity,
                             "address": address,
                             "name": name.removesuffix("." + service_type)[:64],
-                            "dsshine": service_type == SERVICE,
+                            "triplesense": service_type == SERVICE,
                             "transport": "LAN",
                         },
                     )
@@ -199,10 +198,6 @@ def set_launch_at_login(enabled):
         with winreg.CreateKey(
             winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run"
         ) as key:
-            try:
-                winreg.DeleteValue(key, "DSShine")
-            except FileNotFoundError:
-                pass
             if enabled:
                 winreg.SetValueEx(
                     key,
@@ -217,13 +212,13 @@ def set_launch_at_login(enabled):
                 except FileNotFoundError:
                     pass
     elif sys.platform == "darwin":
-        path = Path.home() / "Library/LaunchAgents/me.dsshine.app.plist"
+        path = Path.home() / "Library/LaunchAgents/me.triplesense.app.plist"
         if enabled:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("wb") as stream:
                 plistlib.dump(
                     {
-                        "Label": "me.dsshine.app",
+                        "Label": "me.triplesense.app",
                         "ProgramArguments": [sys.executable],
                         "RunAtLoad": True,
                         "LimitLoadToSessionType": "Aqua",

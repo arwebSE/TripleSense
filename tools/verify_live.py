@@ -19,13 +19,13 @@ from ds5emu import wire as W  # noqa: E402
 from ds5emu.bridge import BridgeBackend  # noqa: E402
 from ds5emu.timing import TimerResolution  # noqa: E402
 from ds5emu.translate import bt31_payload_to_usb01  # noqa: E402
-
-from dualsensedriver.credentials import generate_pair, tls_context  # noqa: E402
-from dualsensedriver.diagnostics import (  # noqa: E402
+from triplesense.credentials import generate_pair, tls_context  # noqa: E402
+from triplesense.diagnostics import (  # noqa: E402
     choose_controller,
     require_controller_isolation,
 )
-from dualsensedriver.transport import HostTunnel, SecureSource  # noqa: E402
+from triplesense.transport import HostTunnel, SecureSource  # noqa: E402
+
 from tests.wire_client import Client, setup  # noqa: E402
 
 

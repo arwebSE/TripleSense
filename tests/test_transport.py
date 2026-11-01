@@ -8,9 +8,8 @@ from ds5bridge.protocol import SetState, build_usb_setstate
 from ds5emu import descriptors as D
 from ds5emu import wire as W
 from ds5emu.backend import SyntheticBackend
-
-from dualsensedriver.credentials import SERVER_NAME, generate_pair, tls_context
-from dualsensedriver.transport import HostTunnel, SecureSource, close_writer, release_report
+from triplesense.credentials import SERVER_NAME, generate_pair, tls_context
+from triplesense.transport import HostTunnel, SecureSource, close_writer, release_report
 
 from .wire_client import Client, setup
 

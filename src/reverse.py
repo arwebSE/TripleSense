@@ -51,7 +51,7 @@ class GameReceiver:
         self.closing = False
         self.worker = None
         self.owned_port = None
-        self.serial = "DS5A" + uuid.uuid4().hex[:11]
+        self.serial = "TRSA" + uuid.uuid4().hex[:11]
         self.last_error = None
         self.ownership_file = ownership_file
         self.attachment = attachment
@@ -67,7 +67,7 @@ class GameReceiver:
                 or not 1 <= state["port"] <= 65535
                 or type(state.get("tcp_port")) is not int
                 or not 1 <= state["tcp_port"] <= 65535
-                or not re.fullmatch(r"DS5A[0-9a-f]{11}", str(state.get("serial", "")))
+                or not re.fullmatch(r"TRSA[0-9a-f]{11}", str(state.get("serial", "")))
             ):
                 raise RuntimeError("Could not verify the previous controller session ownership")
             await detach_owned(self.usbip, state["port"], state["tcp_port"], state["serial"])

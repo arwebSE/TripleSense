@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
-SERVER_NAME = "ds5driver"
+SERVER_NAME = "triplesense"
 
 
 def generate_pair(destination: Path) -> None:
@@ -49,7 +49,7 @@ def generate_pair(destination: Path) -> None:
         folder = destination / role
         folder.mkdir(mode=0o700)
         key = ec.generate_private_key(ec.SECP256R1())
-        name = SERVER_NAME if role == "source" else "ds5driver-host"
+        name = SERVER_NAME if role == "source" else "triplesense-host"
         cert = (
             x509.CertificateBuilder()
             .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, name)]))

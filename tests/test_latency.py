@@ -2,7 +2,7 @@ import ctypes
 import sys
 import unittest
 
-from dualsensedriver.latency import controller_activity, interactive_thread
+from triplesense.latency import controller_activity, interactive_thread
 
 
 @unittest.skipUnless(sys.platform == "darwin", "Native macOS scheduling API")

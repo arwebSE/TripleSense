@@ -3,8 +3,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from dualsensedriver.credentials import generate_pair
-from dualsensedriver.runtime import attached_port, detach_owned
+from triplesense.credentials import generate_pair
+from triplesense.runtime import attached_port, detach_owned
 
 
 class RuntimeTests(unittest.TestCase):
@@ -29,20 +29,20 @@ class CleanupTests(unittest.IsolatedAsyncioTestCase):
         listing = (
             "Imported USB devices\n====================\n"
             "Port 01: device in use at High Speed(480Mbps)\n"
-            " -> usbip://127.0.0.1:3247/1-1\n -> serial: DS5D123456789ab\n"
+            " -> usbip://127.0.0.1:3247/1-1\n -> serial: TRSD123456789ab\n"
             " -> mode: zero-copy\n"
             "Port 02: device in use at High Speed(480Mbps)\n"
             " -> usbip://other:3240/1-1\n -> serial: unrelated\n"
         )
-        with patch("dualsensedriver.runtime.run_usbip", new_callable=AsyncMock) as command:
+        with patch("triplesense.runtime.run_usbip", new_callable=AsyncMock) as command:
             command.side_effect = [listing, "port 1 is successfully detached"]
-            self.assertTrue(await detach_owned("usbip.exe", 1, 3247, "DS5D123456789ab"))
+            self.assertTrue(await detach_owned("usbip.exe", 1, 3247, "TRSD123456789ab"))
             self.assertEqual(command.await_args.args, ("usbip.exe", "detach", "--port", "1"))
 
     async def test_reassigned_or_absent_ports_are_left_alone(self):
         listing = "Port 01: device in use\n -> usbip://other:3240/1-1\n -> serial: other\n"
         for output in (listing, ""):
-            with patch("dualsensedriver.runtime.run_usbip", new_callable=AsyncMock) as command:
+            with patch("triplesense.runtime.run_usbip", new_callable=AsyncMock) as command:
                 command.return_value = output
-                self.assertFalse(await detach_owned("usbip.exe", 1, 3247, "DS5D123456789ab"))
+                self.assertFalse(await detach_owned("usbip.exe", 1, 3247, "TRSD123456789ab"))
                 command.assert_awaited_once_with("usbip.exe", "port")

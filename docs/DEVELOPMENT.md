@@ -18,10 +18,9 @@ For installation and daily use, start with the [README](../README.md) or
 | `vendor/ds5-virtual-cable/` | Pinned controller engine, its tests and required notices/reference data. |
 | `docs/` | User/developer guides, current status and focused Bluetooth research. |
 
-Setuptools maps the flat `src/` directory to the existing `dualsensedriver` Python
-import name. Desktop and console entry points are named TripleSense; old CLI
-aliases and private data identities remain compatible. The frozen builder stages
-a package under `build/` so PyInstaller can analyze the same modules.
+Setuptools maps the flat `src/` directory to the `triplesense` Python package.
+The desktop and console entry points use the TripleSense name. The frozen builder
+stages a package under `build/` so PyInstaller can analyze the same modules.
 
 ## Environment
 
@@ -30,7 +29,7 @@ in a virtual environment:
 
 ```text
 python -m pip install -e ".[controller,app,build,dev]"
-python -m dualsensedriver.app
+python -m triplesense.app
 ```
 
 The desktop app owns pairing and connection lifecycle. The earlier Sunshine

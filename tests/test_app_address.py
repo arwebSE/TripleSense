@@ -11,7 +11,6 @@ from unittest.mock import AsyncMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from dualsensedriver.app import Window
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
@@ -22,6 +21,7 @@ from PySide6.QtWidgets import (
     QStyle,
     QStyleOptionButton,
 )
+from triplesense.app import Window
 
 
 class DesktopTests(unittest.TestCase):
@@ -106,11 +106,11 @@ class DesktopTests(unittest.TestCase):
             window.on_event(
                 "computer",
                 {
-                    "id": "dsshine:one",
+                    "id": "triplesense:one",
                     "host_id": "one",
                     "name": "Gaming PC",
                     "address": address,
-                    "dsshine": True,
+                    "triplesense": True,
                     "transport": transport,
                 },
             )
@@ -147,7 +147,7 @@ class DesktopTests(unittest.TestCase):
     def test_native_taskbar_properties_use_our_icon_and_relaunch_command(self):
         import ctypes
 
-        from dualsensedriver.windows_taskbar import read_window_identity, set_window_identity
+        from triplesense.windows_taskbar import read_window_identity, set_window_identity
 
         # Other layout tests use Qt's offscreen plugin, whose IDs are not HWNDs.
         user32 = ctypes.windll.user32
@@ -161,9 +161,9 @@ class DesktopTests(unittest.TestCase):
             values = read_window_identity(hwnd)
             self.assertEqual(values["app_id"], "TripleSense.Development")
             self.assertEqual(values["display_name"], "TripleSense")
-            self.assertTrue(values["relaunch_icon"].endswith("dsshine.ico,0"))
+            self.assertTrue(values["relaunch_icon"].endswith("triplesense.ico,0"))
             self.assertTrue(Path(values["relaunch_icon"][:-2]).is_file())
-            self.assertIn("-m dualsensedriver.app", values["relaunch_command"])
+            self.assertIn("-m triplesense.app", values["relaunch_command"])
         finally:
             user32.DestroyWindow(ctypes.c_void_p(hwnd))
 
@@ -171,7 +171,12 @@ class DesktopTests(unittest.TestCase):
         window = self.window
         window.manual_address.setText("192.168.1.190")
         window.computers = {
-            "game": {"id": "game", "name": "Server", "address": "192.168.1.190", "dsshine": True}
+            "game": {
+                "id": "game",
+                "name": "Server",
+                "address": "192.168.1.190",
+                "triplesense": True,
+            }
         }
         window._refresh_computers()
         window.hosts.setCurrentRow(0)

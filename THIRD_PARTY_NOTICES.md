@@ -23,7 +23,7 @@ reference documents used by those tests, and upstream license/attribution files.
 Its nested [LICENSE](vendor/ds5-virtual-cable/LICENSE),
 [NOTICE](vendor/ds5-virtual-cable/NOTICE) and
 [ATTRIBUTIONS](vendor/ds5-virtual-cable/ATTRIBUTIONS.md) retain the full upstream
-notices, including dualsense-tester and DS5Dongle. Those files describe the
+notices, including dualsense-tester and TRSDongle. Those files describe the
 upstream distribution; this project does not bundle its installer, GUI,
 HidHide, native echo-canceller DLL or drivers. Microphone mode is `pad`, which
 does not require the omitted native software echo canceller.

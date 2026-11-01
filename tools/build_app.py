@@ -12,8 +12,8 @@ import sysconfig
 import tempfile
 from pathlib import Path
 
-from dualsensedriver import __version__
-from dualsensedriver.app_support import DRIVER_HASH
+from triplesense import __version__
+from triplesense.app_support import DRIVER_HASH
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -94,7 +94,7 @@ def main():
     # PyInstaller needs a physical package directory; setuptools maps our flat
     # src directory to the existing import name for normal/editable installs.
     package_root = ROOT / "build" / "python"
-    package = package_root / "dualsensedriver"
+    package = package_root / "triplesense"
     if package.exists():
         shutil.rmtree(package)
     shutil.copytree(
@@ -109,9 +109,13 @@ def main():
         "--windowed",
         "--onedir",
         "--icon",
-        str(ROOT / "src/assets" / ("dsshine.icns" if sys.platform == "darwin" else "dsshine.ico")),
+        str(
+            ROOT
+            / "src/assets"
+            / ("triplesense.icns" if sys.platform == "darwin" else "triplesense.ico")
+        ),
         "--add-data",
-        str(ROOT / "src/assets") + ":dualsensedriver/assets",
+        str(ROOT / "src/assets") + ":triplesense/assets",
         "--name",
         "TripleSense",
         "--distpath",
@@ -133,7 +137,7 @@ def main():
         "--hidden-import",
         "ds5emu.bridge",
         "--hidden-import",
-        "dualsensedriver.controller",
+        "triplesense.controller",
     ]
     if sys.platform == "win32":
         installer = ROOT / ".driver" / "USBip-0.9.8.1-x64.exe"
@@ -174,11 +178,11 @@ def main():
             info = plistlib.load(stream)
         info.update(
             {
-                "CFBundleIdentifier": "me.dsshine.app",
+                "CFBundleIdentifier": "me.triplesense.app",
                 "CFBundleVersion": __version__,
                 "CFBundleShortVersionString": __version__,
                 "NSLocalNetworkUsageDescription": "Find and connect to your TripleSense server.",
-                "NSBonjourServices": ["_dsshine._tcp"],
+                "NSBonjourServices": ["_triplesense._tcp"],
                 "NSBluetoothAlwaysUsageDescription": "Connect your DualSense to your game PC.",
                 "NSMicrophoneUsageDescription": (
                     "Forward the controller microphone when controller audio is enabled."
@@ -187,7 +191,7 @@ def main():
         )
         with info_path.open("wb") as stream:
             plistlib.dump(info, stream)
-        native_helper = bundle / "Contents/MacOS/dsshine-bluetooth"
+        native_helper = bundle / "Contents/MacOS/triplesense-bluetooth"
         subprocess.run(
             [
                 "clang",
@@ -274,7 +278,7 @@ def main():
     )
     # Validate the frozen dependency stack and GUI, not just PyInstaller's exit
     # status. No hardware is opened; each smoke run uses isolated temporary data.
-    with tempfile.TemporaryDirectory(prefix="dsshine-build-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="triplesense-build-") as temporary:
         preview = Path(temporary) / "window.png"
         smoke_environment = environment.copy()
         smoke_environment["QT_QPA_PLATFORM"] = "windows" if sys.platform == "win32" else "offscreen"
@@ -295,13 +299,13 @@ def main():
         metadata = json.loads(preview.with_suffix(".json").read_text())
         if not metadata.get("icon_valid"):
             raise RuntimeError("The packaged application icon is missing")
-        if sys.platform == "win32" and metadata.get("windows_app_id") != "me.dsshine.app":
+        if sys.platform == "win32" and metadata.get("windows_app_id") != "me.triplesense.app":
             raise RuntimeError("The packaged Windows taskbar identity is incorrect")
         if sys.platform == "win32":
             shell = metadata.get("window_shell", {})
             if (
-                shell.get("app_id") != "me.dsshine.app"
-                or not shell.get("relaunch_icon", "").endswith("dsshine.ico,0")
+                shell.get("app_id") != "me.triplesense.app"
+                or not shell.get("relaunch_icon", "").endswith("triplesense.ico,0")
                 or not Path(shell["relaunch_icon"][:-2]).is_file()
                 or "TripleSense.exe" not in shell.get("relaunch_command", "")
                 or shell.get("display_name") != "TripleSense"

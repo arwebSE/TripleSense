@@ -3,9 +3,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from dualsensedriver.app_support import load_preferences
-from dualsensedriver.credentials import generate_pair
-from dualsensedriver.server_identity import load, remember
+from triplesense.app_support import load_preferences
+from triplesense.credentials import generate_pair
+from triplesense.server_identity import load, remember
 
 
 class ServerIdentityTests(unittest.TestCase):

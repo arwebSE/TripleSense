@@ -2,9 +2,8 @@ import asyncio
 import unittest
 
 from ds5emu import wire as W
-
-from dualsensedriver.mouse_proxy import forward_responses
-from dualsensedriver.touchpad_mouse import TouchpadMouse
+from triplesense.mouse_proxy import forward_responses
+from triplesense.touchpad_mouse import TouchpadMouse
 
 
 def report(points=(), clicked=False):

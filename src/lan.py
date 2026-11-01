@@ -16,7 +16,7 @@ import time
 from . import vpn
 
 PORT = 3252
-MAGIC = b"DSShine discovery v1 "
+MAGIC = b"TripleSense discovery v1 "
 
 
 def broadcast_addresses():
@@ -61,7 +61,7 @@ class LanDiscovery:
         self.client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.client.bind(("0.0.0.0", 0))
         self.client.settimeout(0.2)
-        self.thread = threading.Thread(target=self._run, name="dsshine-discovery", daemon=True)
+        self.thread = threading.Thread(target=self._run, name="triplesense-discovery", daemon=True)
         self.thread.start()
 
     def advertise(self):
@@ -95,7 +95,7 @@ class LanDiscovery:
         if value.get("token") != self.token or value.get("kind") != "game":
             return
         # Broadcast relays can repeat a real reply using the relay's own IP.
-        # Only offer an address that belongs to the responding DSShine server.
+        # Only offer an address that belongs to the responding TripleSense server.
         if peer[0] not in value.get("addresses", []):
             return
         identity, name = value.get("id"), value.get("name")
@@ -109,11 +109,11 @@ class LanDiscovery:
         self.notify(
             "computer",
             {
-                "id": "dsshine:" + identity,
+                "id": "triplesense:" + identity,
                 "host_id": identity,
                 "address": peer[0],
                 "name": name,
-                "dsshine": True,
+                "triplesense": True,
                 "transport": self.vpn_targets.get(peer[0], "LAN"),
             },
         )

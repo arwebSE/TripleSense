@@ -26,8 +26,8 @@ from .transport import close_writer
 
 PAIR_PORT = 3251
 STREAM_PORT = 3250
-CONTEXT = b"DSShine pairing v1"
-IDENTITIES = {"idA": b"DSShine controller", "idB": b"DSShine game PC"}
+CONTEXT = b"TripleSense pairing v1"
+IDENTITIES = {"idA": b"TripleSense controller", "idB": b"TripleSense game PC"}
 
 
 async def read_frame(reader, limit=65536, *, timeout=10):

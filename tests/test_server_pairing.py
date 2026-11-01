@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-from dualsensedriver.app import AppEngine
+from triplesense.app import AppEngine
 
 
 class ServerPairingTests(unittest.IsolatedAsyncioTestCase):
@@ -28,9 +28,9 @@ class ServerPairingTests(unittest.IsolatedAsyncioTestCase):
     async def test_starting_paired_server_also_creates_code(self):
         receiver = SimpleNamespace(start=AsyncMock(), stop=AsyncMock(), owned_port=None)
         with (
-            patch("dualsensedriver.app.sys.platform", "win32"),
-            patch("dualsensedriver.app.find_usbip", return_value="usbip.exe"),
-            patch("dualsensedriver.app.GameReceiver", return_value=receiver),
+            patch("triplesense.app.sys.platform", "win32"),
+            patch("triplesense.app.find_usbip", return_value="usbip.exe"),
+            patch("triplesense.app.GameReceiver", return_value=receiver),
             patch.object(self.engine, "_create_pairing_offer", new_callable=AsyncMock) as offer,
         ):
             await self.engine._start_game()
@@ -53,8 +53,8 @@ class ServerPairingTests(unittest.IsolatedAsyncioTestCase):
         offer = SimpleNamespace(start=AsyncMock(), stop=AsyncMock(), code="1234")
         self.engine.receiver = SimpleNamespace(owned_port=None)
         with (
-            patch("dualsensedriver.app.PairingOffer", return_value=offer),
-            patch("dualsensedriver.app.asyncio.sleep", new_callable=AsyncMock),
+            patch("triplesense.app.PairingOffer", return_value=offer),
+            patch("triplesense.app.asyncio.sleep", new_callable=AsyncMock),
         ):
             await self.engine._create_pairing_offer()
             with patch.object(
@@ -75,7 +75,7 @@ class ServerPairingTests(unittest.IsolatedAsyncioTestCase):
         self.engine.receiver = receiver
         offer = SimpleNamespace(start=AsyncMock(), code="1234")
         with (
-            patch("dualsensedriver.app.PairingOffer", return_value=offer) as factory,
+            patch("triplesense.app.PairingOffer", return_value=offer) as factory,
             patch.object(self.engine, "_start_game", new_callable=AsyncMock) as start,
         ):
             await self.engine._create_pairing_offer()

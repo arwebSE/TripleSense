@@ -8,7 +8,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from dualsensedriver import __version__
+from triplesense import __version__
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -60,7 +60,7 @@ Categories=Game;Utility;
     )
     icon = staging / "usr/share/icons/hicolor/512x512/apps/triplesense.png"
     icon.parent.mkdir(parents=True)
-    shutil.copy2(ROOT / "src/assets/dsshine.png", icon)
+    shutil.copy2(ROOT / "src/assets/triplesense.png", icon)
     write(
         "usr/lib/udev/rules.d/70-triplesense.rules",
         """# Access only for the active local desktop seat.

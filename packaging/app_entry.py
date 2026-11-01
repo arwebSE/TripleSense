@@ -1,9 +1,9 @@
 import traceback
 
-from dualsensedriver.app_support import app_directory
+from triplesense.app_support import app_directory
 
 try:
-    from dualsensedriver.app import main
+    from triplesense.app import main
 
     # Do not leave a stale failure report after a successful later launch.
     root = app_directory()

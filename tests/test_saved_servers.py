@@ -2,16 +2,16 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from dualsensedriver import saved_servers
-from dualsensedriver.credentials import generate_pair
-from dualsensedriver.reverse import GameReceiver
+from triplesense import saved_servers
+from triplesense.credentials import generate_pair
+from triplesense.reverse import GameReceiver
 
 
 class SavedServerTests(unittest.TestCase):
-    def test_existing_pair_is_migrated_and_can_be_selected_without_repairing(self):
+    def test_saved_servers_can_be_selected_without_pairing_again(self):
         first = {"host_id": "first", "address": "100.97.43.25", "credentials": "first-identity"}
-        preferences = {"controller_profile": first}
-        saved_servers.migrate(preferences)
+        preferences = {}
+        saved_servers.remember(preferences, first)
         saved_servers.remember(
             preferences,
             {"host_id": "second", "address": "100.127.28.249", "credentials": "second-identity"},
@@ -20,7 +20,7 @@ class SavedServerTests(unittest.TestCase):
         saved_servers.select(preferences, "first")
         self.assertIs(preferences["controller_profile"], first)
         self.assertEqual(preferences["game_address"], "100.97.43.25")
-        saved_servers.migrate(preferences)
+        saved_servers.profiles(preferences)
         self.assertEqual(len(preferences["servers"]), 2)
 
     def test_forgetting_selected_server_preserves_the_other_pair_and_credentials(self):

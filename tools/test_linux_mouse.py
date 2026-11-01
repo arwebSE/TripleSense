@@ -17,8 +17,7 @@ from pathlib import Path
 
 from evdev import InputDevice
 from evdev import ecodes as E
-
-from dualsensedriver.mouse_output import LinuxMouse
+from triplesense.mouse_output import LinuxMouse
 
 
 def main():

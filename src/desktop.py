@@ -187,7 +187,7 @@ class Window(QMainWindow):
         self._build()
         self.tooltip_filter = DisabledTooltips(self)
         QApplication.instance().installEventFilter(self.tooltip_filter)
-        self.setWindowIcon(QIcon(str(Path(__file__).with_name("assets") / "dsshine.svg")))
+        self.setWindowIcon(QIcon(str(Path(__file__).with_name("assets") / "triplesense.svg")))
         quit_action = QAction("Quit TripleSense", self)
         quit_action.setShortcut("Ctrl+Q" if sys.platform == "win32" else "Meta+Q")
         quit_action.triggered.connect(self.quit)
@@ -245,7 +245,7 @@ class Window(QMainWindow):
         header = QHBoxLayout()
         mark = QLabel()
         mark.setPixmap(
-            QIcon(str(Path(__file__).with_name("assets") / "dsshine.svg")).pixmap(36, 36)
+            QIcon(str(Path(__file__).with_name("assets") / "triplesense.svg")).pixmap(36, 36)
         )
         mark.setFixedSize(36, 36)
         header.addWidget(mark)
@@ -833,10 +833,10 @@ class Window(QMainWindow):
         selected = selected_pc.get("id") if selected_pc else None
         self.hosts.clear()
         by_address = {}
-        for pc in sorted(self.computers.values(), key=lambda item: item["dsshine"]):
+        for pc in sorted(self.computers.values(), key=lambda item: item["triplesense"]):
             by_address[pc["address"]] = pc
         for pc in by_address.values():
-            suffix = "" if pc["dsshine"] else " · open TripleSense here first"
+            suffix = "" if pc["triplesense"] else " · open TripleSense here first"
             transport = pc.get("transport", "LAN")
             item = QListWidgetItem(pc["name"] + " · " + transport + "\n" + pc["address"] + suffix)
             item.setIcon(route_icon(transport))
@@ -854,7 +854,7 @@ class Window(QMainWindow):
         self._fit_page()
 
     def _refresh_saved_servers(self):
-        servers = dict(saved_servers.migrate(self.preferences))
+        servers = dict(saved_servers.profiles(self.preferences))
         self.saved_list.blockSignals(True)
         self.saved_list.clear()
         for identifier, profile in servers.items():

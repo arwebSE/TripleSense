@@ -39,4 +39,4 @@ $installerArgs = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', ('/LOG="{0}
 $process = Start-Process -FilePath $installerPath -ArgumentList $installerArgs -Wait -PassThru -WindowStyle Hidden
 if ($process.ExitCode -notin @(0, 3010)) { throw "Installer exit code $($process.ExitCode). See $logPath" }
 if ($process.ExitCode -eq 3010) { Write-Output 'Windows requested a restart; no restart was performed.' }
-Write-Output 'Driver installer finished. Run ds5driver doctor and verify live attachment before playing.'
+Write-Output 'Driver installer finished. Run triplesense doctor and verify live attachment before playing.'

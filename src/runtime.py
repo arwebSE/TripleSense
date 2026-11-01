@@ -126,7 +126,7 @@ async def host(args) -> None:
     if args.attach and not usbip:
         raise RuntimeError("Install usbip-win2 on the Windows game PC first, or provide --usbip.")
     owned_port = None
-    serial = "DS5D" + uuid.uuid4().hex[:11]
+    serial = "TRSD" + uuid.uuid4().hex[:11]
     try:
         tunnel = HostTunnel(args.source, args.port, context, port=args.local_port)
         await tunnel.start()

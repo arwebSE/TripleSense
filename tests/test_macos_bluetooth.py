@@ -2,7 +2,7 @@ import unittest
 import zlib
 from types import SimpleNamespace
 
-from dualsensedriver.macos_bluetooth import NativeHID
+from triplesense.macos_bluetooth import NativeHID
 
 
 def packet(kind, marker):

@@ -43,14 +43,14 @@ class AppEngine:
     def __init__(self, root, preferences, notify):
         self.root, self.preferences, self.notify = root, preferences, notify
         self.loop = asyncio.new_event_loop()
-        self.thread = threading.Thread(target=self._run, name="dsshine-network", daemon=True)
+        self.thread = threading.Thread(target=self._run, name="triplesense-network", daemon=True)
         self.thread.start()
         self.operation = asyncio.Lock()
         self.receiver = self.connection = self.pairing = self.expiry = None
         self.discovery = None
         self.discovery_scanning = False
         self.probe_task = None
-        saved_servers.migrate(self.preferences)
+        saved_servers.profiles(self.preferences)
 
     def _run(self):
         asyncio.set_event_loop(self.loop)
@@ -330,34 +330,6 @@ class AppEngine:
         profile = self.preferences.get("controller_profile")
         if (
             profile
-            and not profile.get("host_id")
-            and computer.get("host_id")
-            and profile["address"] == computer["address"]
-            and computer.get("dsshine")
-        ):
-            # Upgrade an existing pair only after verifying its pinned TLS CA.
-            from .credentials import SERVER_NAME, tls_context
-            from .transport import close_writer
-
-            try:
-                _, writer = await asyncio.wait_for(
-                    asyncio.open_connection(
-                        profile["address"],
-                        profile["port"],
-                        ssl=tls_context(Path(profile["credentials"]), server=False),
-                        server_hostname=SERVER_NAME,
-                        ssl_handshake_timeout=3,
-                        ssl_shutdown_timeout=1,
-                    ),
-                    5,
-                )
-                await close_writer(writer)
-            except (OSError, TimeoutError):
-                return
-            profile["host_id"] = computer["host_id"]
-            self.save()
-        if (
-            profile
             and profile.get("host_id")
             and profile["host_id"] == computer.get("host_id")
             and profile["address"] != computer["address"]
@@ -431,7 +403,6 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="TripleSense desktop app")
     parser.add_argument("--data-dir", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--smoke-test", type=Path, help=argparse.SUPPRESS)
-    parser.add_argument("--background", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--quit", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--repair-setup", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -451,7 +422,9 @@ def main(argv=None):
         from .setup import repair_windows
 
         application = QApplication(sys.argv[:1])
-        application.setWindowIcon(QIcon(str(Path(__file__).with_name("assets") / "dsshine.png")))
+        application.setWindowIcon(
+            QIcon(str(Path(__file__).with_name("assets") / "triplesense.png"))
+        )
         try:
             repair_windows()
             QMessageBox.information(
@@ -478,7 +451,7 @@ def main(argv=None):
             args.smoke_test.with_suffix(".json").write_text(json.dumps({"error": str(exc)}))
             return 1
     application = QApplication(sys.argv[:1])
-    application.setWindowIcon(QIcon(str(Path(__file__).with_name("assets") / "dsshine.png")))
+    application.setWindowIcon(QIcon(str(Path(__file__).with_name("assets") / "triplesense.png")))
     application.setApplicationName("TripleSense")
     application.setOrganizationName("TripleSense")
     application.setQuitOnLastWindowClosed(False)
@@ -496,7 +469,7 @@ def main(argv=None):
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     import hashlib
 
-    endpoint = "DSShine-" + hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:24]
+    endpoint = "TripleSense-" + hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:24]
     if args.quit:
         peer = QLocalSocket()
         peer.connectToServer(endpoint)
@@ -514,7 +487,7 @@ def main(argv=None):
         return 0
     logging.basicConfig(level=logging.WARNING, filename=root / "app.log", encoding="utf-8")
     for name in ("mouse_proxy", "touchpad_mouse"):
-        logging.getLogger(f"dualsensedriver.{name}").setLevel(logging.INFO)
+        logging.getLogger(f"triplesense.{name}").setLevel(logging.INFO)
     # cython-hidapi initializes IOHIDManager at import and finalizes at atexit.
     # macOS requires that owner thread to survive until hid_exit, on that same
     # thread. Import before the engine can first import it in an executor.
@@ -575,7 +548,6 @@ def main(argv=None):
                 window.engine.submit(window.engine.update_preferences("launch_at_login", True))
             except (OSError, RuntimeError) as exc:
                 window.on_event("error", "Could not enable automatic startup: " + str(exc))
-    # Accept the legacy flag so existing login entries still open a visible app.
     if not args.smoke_test:
         window.show()
     if args.smoke_test:

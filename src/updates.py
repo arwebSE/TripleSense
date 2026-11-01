@@ -202,7 +202,7 @@ def stage_macos(package, version, executable=None):
         with (source / "Contents/Info.plist").open("rb") as stream:
             info = plistlib.load(stream)
         if (
-            info.get("CFBundleIdentifier") != "me.dsshine.app"
+            info.get("CFBundleIdentifier") != "me.triplesense.app"
             or info.get("CFBundleShortVersionString") != version
         ):
             raise UpdateError("The downloaded app has an unexpected identity or version.")

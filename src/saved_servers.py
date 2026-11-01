@@ -11,28 +11,16 @@ from .credentials import SERVER_NAME, tls_context
 from .transport import close_writer
 
 
-def migrate(preferences):
+def profiles(preferences):
     servers = preferences.setdefault("servers", {})
-    profile = preferences.get("controller_profile")
     selected = preferences.get("selected_server")
-    if profile and selected not in servers:
-        selected = next(
-            (
-                key
-                for key, value in servers.items()
-                if value.get("credentials") == profile.get("credentials")
-            ),
-            profile.get("host_id") or uuid.uuid4().hex,
-        )
-        servers[selected] = profile
-        preferences["selected_server"] = selected
     if selected in servers:
         preferences["controller_profile"] = servers[selected]
     return servers
 
 
 def remember(preferences, profile):
-    servers = migrate(preferences)
+    servers = profiles(preferences)
     identifier = profile.get("host_id") or uuid.uuid4().hex
     servers[identifier] = profile
     select(preferences, identifier)
@@ -47,7 +35,7 @@ def select(preferences, identifier):
 
 
 def forget(preferences, identifier, root):
-    servers = migrate(preferences)
+    servers = profiles(preferences)
     profile = servers.pop(identifier)
     if preferences.get("selected_server") == identifier:
         preferences.pop("selected_server", None)

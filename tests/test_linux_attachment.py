@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-from dualsensedriver.linux_vhci import LinuxAttachment
+from triplesense.linux_vhci import LinuxAttachment
 
 
 class AttachmentTests(unittest.IsolatedAsyncioTestCase):
@@ -23,9 +23,9 @@ class AttachmentTests(unittest.IsolatedAsyncioTestCase):
         process = self.process(b'{"port":0}\n')
         attachment = LinuxAttachment()
         with (
-            patch("dualsensedriver.linux_vhci.os.geteuid", return_value=0, create=True),
+            patch("triplesense.linux_vhci.os.geteuid", return_value=0, create=True),
             patch(
-                "dualsensedriver.linux_vhci.asyncio.create_subprocess_exec",
+                "triplesense.linux_vhci.asyncio.create_subprocess_exec",
                 new=AsyncMock(return_value=process),
             ),
         ):
@@ -39,9 +39,9 @@ class AttachmentTests(unittest.IsolatedAsyncioTestCase):
         process = self.process(b'{"port":256}\n')
         attachment = LinuxAttachment()
         with (
-            patch("dualsensedriver.linux_vhci.os.geteuid", return_value=0, create=True),
+            patch("triplesense.linux_vhci.os.geteuid", return_value=0, create=True),
             patch(
-                "dualsensedriver.linux_vhci.asyncio.create_subprocess_exec",
+                "triplesense.linux_vhci.asyncio.create_subprocess_exec",
                 new=AsyncMock(return_value=process),
             ),
         ):
@@ -55,9 +55,9 @@ class AttachmentTests(unittest.IsolatedAsyncioTestCase):
         process.stdout = asyncio.StreamReader()
         attachment = LinuxAttachment()
         with (
-            patch("dualsensedriver.linux_vhci.os.geteuid", return_value=0, create=True),
+            patch("triplesense.linux_vhci.os.geteuid", return_value=0, create=True),
             patch(
-                "dualsensedriver.linux_vhci.asyncio.create_subprocess_exec",
+                "triplesense.linux_vhci.asyncio.create_subprocess_exec",
                 new=AsyncMock(return_value=process),
             ),
         ):

@@ -14,15 +14,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import hid  # noqa: E402
 from ds5bridge import protocol as P  # noqa: E402
 from ds5emu.bridge import BridgeBackend  # noqa: E402
-
-from dualsensedriver.credentials import generate_pair, tls_context  # noqa: E402
-from dualsensedriver.diagnostics import (  # noqa: E402
+from triplesense.credentials import generate_pair, tls_context  # noqa: E402
+from triplesense.diagnostics import (  # noqa: E402
     choose_controller,
     find_usbip,
     require_controller_isolation,
 )
-from dualsensedriver.runtime import attached_port, detach_owned, run_role, run_usbip  # noqa: E402
-from dualsensedriver.transport import (  # noqa: E402
+from triplesense.runtime import attached_port, detach_owned, run_role, run_usbip  # noqa: E402
+from triplesense.transport import (  # noqa: E402
     HostTunnel,
     SecureSource,
     release_report,  # noqa: E402

@@ -10,7 +10,9 @@ from .latency import interactive_thread
 
 class ControllerBackend(BridgeBackend):
     def _native_bluetooth_enabled(self):
-        return sys.platform == "darwin" and os.environ.get("DSSHINE_NATIVE_BLUETOOTH", "1") != "0"
+        return (
+            sys.platform == "darwin" and os.environ.get("TRIPLESENSE_NATIVE_BLUETOOTH", "1") != "0"
+        )
 
     def _pick_device(self):
         try:

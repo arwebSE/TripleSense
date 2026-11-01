@@ -8,7 +8,7 @@ import sys
 import uuid
 from pathlib import Path
 
-APP_ID = "me.dsshine.app"
+APP_ID = "me.triplesense.app"
 PROPERTY_IDS = {"relaunch_command": 2, "relaunch_icon": 3, "display_name": 4, "app_id": 5}
 
 
@@ -97,12 +97,12 @@ class _Store:
 def set_window_identity(hwnd):
     if sys.platform != "win32":
         return
-    icon = Path(__file__).with_name("assets") / "dsshine.ico"
+    icon = Path(__file__).with_name("assets") / "triplesense.ico"
     if not icon.is_file():
         raise FileNotFoundError(icon)
     command = [sys.executable]
     if not getattr(sys, "frozen", False):
-        command += ["-m", "dualsensedriver.app"]
+        command += ["-m", "triplesense.app"]
     store = _Store(hwnd)
     try:
         # Set relaunch metadata before the ID makes the window visible to the shell.

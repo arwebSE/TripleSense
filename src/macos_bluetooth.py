@@ -21,8 +21,8 @@ HEADER = struct.Struct("<IBI")
 
 def helper_path() -> Path:
     if getattr(sys, "frozen", False):
-        return Path(sys.executable).with_name("dsshine-bluetooth")
-    return Path(__file__).resolve().parents[1] / "build/native/dsshine-bluetooth"
+        return Path(sys.executable).with_name("triplesense-bluetooth")
+    return Path(__file__).resolve().parents[1] / "build/native/triplesense-bluetooth"
 
 
 def remembered_controller():

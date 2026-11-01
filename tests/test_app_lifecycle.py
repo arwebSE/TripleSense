@@ -5,10 +5,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from dualsensedriver.app import AppEngine
-from dualsensedriver.controller import StandaloneControllerBackend
-from dualsensedriver.credentials import generate_pair
-from dualsensedriver.reverse import GameReceiver
+from triplesense.app import AppEngine
+from triplesense.controller import StandaloneControllerBackend
+from triplesense.credentials import generate_pair
+from triplesense.reverse import GameReceiver
 
 
 class AudioOptInTests(unittest.TestCase):
@@ -53,7 +53,7 @@ class AppCleanupTests(unittest.IsolatedAsyncioTestCase):
                 {
                     "port": 3,
                     "tcp_port": 45678,
-                    "serial": "DS5A123456789ab",
+                    "serial": "TRSA123456789ab",
                 }
             )
         )
@@ -65,11 +65,11 @@ class AppCleanupTests(unittest.IsolatedAsyncioTestCase):
             bind="127.0.0.1",
             ownership_file=self.record,
         )
-        with patch("dualsensedriver.reverse.detach_owned", new_callable=AsyncMock) as detach:
+        with patch("triplesense.reverse.detach_owned", new_callable=AsyncMock) as detach:
             detach.return_value = False  # Port absent or reassigned: never forcibly detach it.
             try:
                 await receiver.start()
-                detach.assert_awaited_once_with("usbip.exe", 3, 45678, "DS5A123456789ab")
+                detach.assert_awaited_once_with("usbip.exe", 3, 45678, "TRSA123456789ab")
                 self.assertFalse(self.record.exists())
             finally:
                 await receiver.stop()
@@ -91,7 +91,7 @@ class AppCleanupTests(unittest.IsolatedAsyncioTestCase):
             port=0,
             ownership_file=self.record,
         )
-        with patch("dualsensedriver.reverse.detach_owned", new_callable=AsyncMock) as detach:
+        with patch("triplesense.reverse.detach_owned", new_callable=AsyncMock) as detach:
             with self.assertRaisesRegex(RuntimeError, "ownership"):
                 await receiver.start()
             detach.assert_not_awaited()
@@ -117,7 +117,7 @@ class AppCleanupTests(unittest.IsolatedAsyncioTestCase):
                 }
             )
         )
-        with patch("dualsensedriver.reverse.detach_owned", new_callable=AsyncMock) as detach:
+        with patch("triplesense.reverse.detach_owned", new_callable=AsyncMock) as detach:
             detach.side_effect = RuntimeError("driver unavailable")
             with self.assertRaisesRegex(RuntimeError, "driver unavailable"):
                 await receiver.stop()
@@ -145,7 +145,7 @@ class AppCleanupTests(unittest.IsolatedAsyncioTestCase):
             await complete.wait()
             return "3"
 
-        with patch("dualsensedriver.reverse.run_usbip", side_effect=slow_attach):
+        with patch("triplesense.reverse.run_usbip", side_effect=slow_attach):
             task = asyncio.create_task(receiver._attach_once())
             await entered.wait()
             task.cancel()
@@ -155,7 +155,7 @@ class AppCleanupTests(unittest.IsolatedAsyncioTestCase):
                 await task
         self.assertEqual(receiver.owned_port, 3)
         self.assertEqual(json.loads(self.record.read_text())["port"], 3)
-        with patch("dualsensedriver.reverse.detach_owned", new_callable=AsyncMock) as detach:
+        with patch("triplesense.reverse.detach_owned", new_callable=AsyncMock) as detach:
             await receiver.stop()
             detach.assert_awaited_once_with("usbip.exe", 3, 45678, receiver.serial)
             self.assertFalse(self.record.exists())

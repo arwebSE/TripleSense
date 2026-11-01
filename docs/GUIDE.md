@@ -137,7 +137,9 @@ published SHA-256 digest before installation.
 | Update fails | Check repository access and OS authorization. The helper attempts to reopen the installed app; details are in `update-install.log`. |
 
 Open **Logs** for connection diagnostics. Logs do not contain microphone recordings.
-Private app data remains in `%LOCALAPPDATA%/DSShine` on Windows,
-`~/Library/Application Support/DSShine` on macOS and
-`~/.local/share/DSShine` on Linux (or your `XDG_DATA_HOME`). The old internal name
-preserves existing pairings. Do not share identity files or private keys.
+Private app data is stored in `%LOCALAPPDATA%/TripleSense` on Windows,
+`~/Library/Application Support/TripleSense` on macOS and
+`~/.local/share/TripleSense` on Linux (or your `XDG_DATA_HOME`). Do not share identity files or private keys.
+
+TripleSense uses its own installation, app data and pairing identities. It does
+not import settings or pairings from earlier differently named applications.

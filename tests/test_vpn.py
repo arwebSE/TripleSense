@@ -6,8 +6,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from dualsensedriver import vpn
-from dualsensedriver.lan import LanDiscovery
+from triplesense import vpn
+from triplesense.lan import LanDiscovery
 
 
 class VpnDiscoveryTests(unittest.TestCase):
@@ -94,8 +94,8 @@ class VpnDiscoveryTests(unittest.TestCase):
         try:
             game.advertise()
             with (
-                patch("dualsensedriver.lan.broadcast_addresses", return_value=set()),
-                patch("dualsensedriver.lan.vpn.routes", return_value={"127.0.0.1": "Tailscale"}),
+                patch("triplesense.lan.broadcast_addresses", return_value=set()),
+                patch("triplesense.lan.vpn.routes", return_value={"127.0.0.1": "Tailscale"}),
             ):
                 client = LanDiscovery(notify, "vpn-client", port=port)
                 self.assertTrue(ready.wait(3))

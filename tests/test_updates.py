@@ -7,7 +7,7 @@ import urllib.request
 from pathlib import Path
 from unittest.mock import patch
 
-from dualsensedriver import updates as U
+from triplesense import updates as U
 
 
 def release_data(name="TripleSense-Setup-1.2.3-Windows-x64.exe", payload=b"installer"):

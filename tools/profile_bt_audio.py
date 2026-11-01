@@ -19,9 +19,8 @@ import hid
 from ds5bridge import audio as A
 from ds5bridge import protocol as P
 from ds5bridge.device import DualSense
-
-from dualsensedriver.diagnostics import choose_controller, require_controller_isolation
-from dualsensedriver.latency import controller_activity, interactive_thread
+from triplesense.diagnostics import choose_controller, require_controller_isolation
+from triplesense.latency import controller_activity, interactive_thread
 
 
 def timed_phase(device, build, period, seconds):
@@ -97,7 +96,7 @@ def profile(serial, seconds, microphone):
                             kind += f"/type{report[1] & P.PAYLOAD_TYPE_MASK}"
                         shapes[kind] += 1
 
-        reader = threading.Thread(target=drain_input, name="dsshine-probe-input", daemon=True)
+        reader = threading.Thread(target=drain_input, name="triplesense-probe-input", daemon=True)
         reader.start()
         try:
             device.send_mic_state(microphone)

@@ -7,11 +7,10 @@ from unittest.mock import AsyncMock, patch
 from ds5bridge.protocol import SetState, build_usb_setstate
 from ds5emu import wire as W
 from ds5emu.backend import SyntheticBackend
-
-from dualsensedriver.credentials import generate_pair
-from dualsensedriver.pairing import PairingOffer, pair_controller
-from dualsensedriver.reverse import ControllerConnection, GameReceiver
-from dualsensedriver.transport import release_report
+from triplesense.credentials import generate_pair
+from triplesense.pairing import PairingOffer, pair_controller
+from triplesense.reverse import ControllerConnection, GameReceiver
+from triplesense.transport import release_report
 
 from .test_touchpad_mouse import Output, report
 from .wire_client import Client
@@ -101,7 +100,7 @@ class AppPairingTests(unittest.IsolatedAsyncioTestCase):
             bind="127.0.0.1",
             touchpad_mouse=True,
         )
-        with patch("dualsensedriver.mouse_output.create_mouse", return_value=output):
+        with patch("triplesense.mouse_output.create_mouse", return_value=output):
             await receiver.start()
         profile["port"] = receiver.port
         controller = ControllerConnection(profile, backend, lambda *args: None)
@@ -134,9 +133,7 @@ class AppPairingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(output.events[-1], ("close",))
 
     async def test_network_timeout_has_actionable_message(self):
-        with patch(
-            "dualsensedriver.pairing.asyncio.open_connection", new_callable=AsyncMock
-        ) as dial:
+        with patch("triplesense.pairing.asyncio.open_connection", new_callable=AsyncMock) as dial:
             dial.side_effect = TimeoutError()
             with self.assertRaisesRegex(TimeoutError, "VPN connection and server firewall"):
                 await pair_controller("100.97.43.25", self.offer.code, self.root / "client")
