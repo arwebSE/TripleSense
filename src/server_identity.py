@@ -8,14 +8,19 @@ from pathlib import Path
 
 
 def _folder(root, relative):
-    folder = (root / relative).resolve()
-    identities = (root / "identities").resolve()
+    relative = Path(relative)
     if (
-        not folder.is_relative_to(identities)
-        or folder.name != "credentials"
-        or not folder.parent.name.startswith("game-")
+        relative.is_absolute()
+        or len(relative.parts) != 3
+        or relative.parts[0] != "identities"
+        or not relative.parts[1].startswith("game-")
+        or relative.parts[2] != "credentials"
     ):
         raise ValueError("Invalid saved server identity path")
+    folder = root / relative
+    for directory in (root / "identities", folder.parent, folder):
+        if directory.is_symlink() or getattr(directory, "is_junction", lambda: False)():
+            raise ValueError("Invalid saved server identity path")
     if not all((folder / name).is_file() for name in ("ca.pem", "cert.pem", "key.pem")):
         raise ValueError("Saved server identity is incomplete")
     return folder
@@ -23,9 +28,13 @@ def _folder(root, relative):
 
 def remember(root, credentials, controller_name):
     root = Path(root).resolve()
-    folder = _folder(root, Path(credentials).resolve().relative_to(root))
+    # Windows app-data virtualization can resolve a child into a package cache
+    # while leaving its parent logical. Validate the exact relative layout and
+    # reject links instead of comparing those inconsistent resolved paths.
+    relative = Path(credentials).absolute().relative_to(root)
+    folder = _folder(root, relative)
     value = {
-        "credentials": str(folder.relative_to(root)),
+        "credentials": str(relative),
         "ca_sha256": hashlib.sha256((folder / "ca.pem").read_bytes()).hexdigest(),
         "controller_name": str(controller_name)[:64],
     }
